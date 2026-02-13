@@ -1,3 +1,5 @@
+import json
+
 import pandas as pd
 import numpy as np
 import joblib
@@ -8,7 +10,7 @@ from pathlib import Path
 ROOT_DIR = Path(__file__).resolve().parent.parent.parent
 sys.path.append(str(ROOT_DIR))
 
-from config.paths import TRAIN_FILE, WATCHDOG_MODEL_PATH, SCALER_PATH
+from config.paths import TRAIN_FILE, WATCHDOG_MODEL_PATH, SCALER_PATH, SETTINGS_FILE
 from src.stats_engine.metrics import PerformanceEvaluator
 
 from sklearn.preprocessing import MinMaxScaler
@@ -21,8 +23,7 @@ def train_watchdog():
     print("=" * 50)
 
     # 1. VERİ YÜKLEME
-    col_names = ['unit_number', 'cycle', 'setting1', 'setting2', 'setting3'] + [f'sensor_measurement{i}' for i in
-                                                                                range(1, 22)]
+    col_names = json.load(open(SETTINGS_FILE)).get('data_col_names')
     try:
         df = pd.read_csv(TRAIN_FILE, sep='\s+', header=None, names=col_names)
     except FileNotFoundError:
@@ -30,9 +31,7 @@ def train_watchdog():
         return
 
     # 2. ÖN İŞLEME
-    drop_sensors = ['sensor_measurement1', 'sensor_measurement5', 'sensor_measurement6', 'sensor_measurement10',
-                    'sensor_measurement16', 'sensor_measurement18', 'sensor_measurement19', 'setting1', 'setting2',
-                    'setting3']
+    drop_sensors = json.load(open(SETTINGS_FILE)).get('drop_columns')
     features = [c for c in df.columns if c not in drop_sensors and c not in ['unit_number', 'cycle']]
 
     # EĞİTİM: İlk 50 döngü (Sağlıklı)

@@ -186,26 +186,21 @@ sys.path.append(str(ROOT_DIR))
 from src.ai_core.crew import JetEngineCrew
 from src.simulation.streamer import SensorStreamer
 from src.orchestrator.manager import Orchestrator
+from src.utils.visualizer import DashboardVisualizer
+from src.stats_engine.metrics import PerformanceEvaluator
+from src.utils.logger import logger
+from src.stats_engine.guard import DataGuard
+
 
 os.environ["CREWAI_TELEMETRY_OPT_OUT"] = "true"
 os.environ["OPENAI_API_KEY"] = "NA" # Sahte key, CrewAI kontrolünü geçmek için
-# --- SAYFA AYARLARI ---
-st.set_page_config(
-    page_title="JetEngine Guard AI",
-    page_icon="✈️",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
 
-# --- CSS STİL (Görsellik İçin) ---
+# --- SAYFA YAPILANDIRMASI ---
+st.set_page_config(page_title="JetEngine Guard AI", page_icon="✈️", layout="wide")
+
+# --- CSS ---
 st.markdown("""
 <style>
-    .metric-card {
-        background-color: #1E1E1E;
-        padding: 15px;
-        border-radius: 10px;
-        border: 1px solid #333;
-    }
     .status-normal { color: #00FF00; font-weight: bold; }
     .status-warning { color: #FFA500; font-weight: bold; }
     .status-critical { color: #FF0000; font-weight: bold; animation: blinker 1s linear infinite; }
@@ -214,155 +209,140 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- BAŞLIK ---
-st.title("✈️ JetEngine Guard: AI Tabanlı Anomali Tespiti")
-st.markdown("**Decoupled Decision Making & Safety-Critical Monitoring**")
+st.title("✈️ JetEngine Guard: Autonomous AI Defense System")
+st.markdown("**Real-Time Anomaly Detection & Generative AI Diagnostics**")
 
-# --- SIDEBAR (Kontrol Paneli) ---
+# --- SIDEBAR ---
 with st.sidebar:
-    st.header("🎮 Simülasyon Kontrol")
-    engine_id = st.number_input("Motor ID", min_value=1, max_value=100, value=1)
-    # Hızı artırıp azaltabilirsin. 0.05 ideal bir demo hızıdır.
-    speed = st.slider("Simülasyon Gecikmesi (sn)", 0.01, 1.0, 0.05)
-    start_btn = st.button("🚀 Simülasyonu Başlat", type="primary")
-    stop_btn = st.button("🛑 Durdur")
+    st.header("🎮 Kontrol Paneli")
+    engine_id = st.number_input("Motor ID", 1, 100, 1)
+    speed = st.slider("Simülasyon Hızı", 0.01, 1.0, 0.05)
+    start_btn = st.button("🚀 SİSTEMİ BAŞLAT", type="primary")
 
-# --- ANA ARAYÜZ YERLEŞİMİ ---
-# Üst Kısım: Anlık Durum Paneli
+    st.divider()
+    # Metrikleri göstermek için yer tutucular
+    st.subheader("📈 Canlı Performans")
+    metric_cycle = st.empty()
+    metric_accuracy = st.empty()
+    metric_recall = st.empty()
+
+# --- ARAYÜZ YERLEŞİMİ ---
 col1, col2, col3, col4 = st.columns(4)
-with col1:
-    cycle_metric = st.empty()
-with col2:
-    status_metric = st.empty()
-with col3:
-    loss_metric = st.empty()
-with col4:
-    ai_status = st.empty()
+with col1: cycle_disp = st.empty()
+with col2: status_disp = st.empty()
+with col3: loss_disp = st.empty()
+with col4: ai_disp = st.empty()
 
 st.divider()
-
-# Orta Kısım: Grafikler ve Loglar
 col_left, col_right = st.columns([2, 1])
-
 with col_left:
-    st.subheader("📊 Canlı Sensör Anomali Grafiği")
+    st.subheader("📊 Sensör Anomali Grafiği")
     chart_placeholder = st.empty()
-
 with col_right:
     st.subheader("🧠 AI Analiz Konsolu")
-    ai_log_container = st.container(height=400)
+    ai_log = st.container(height=400)
 
-# --- SİMÜLASYON MANTIĞI ---
+# --- ANA DÖNGÜ ---
 if start_btn:
-    # 1. Sistemleri Başlat
+    logger.info("Simülasyon başlatıldı.")
+
+    # 1. Modülleri Başlat
     streamer = SensorStreamer(engine_id=engine_id)
     orchestrator = Orchestrator()
+    guard = DataGuard()  # YENİ: Guard
+    evaluator = PerformanceEvaluator()  # YENİ: Senin Metrik Sınıfın
 
-    # Grafik İçin Veri Tamponu
-    history_loss = []
-    history_threshold = []
-    history_cycles = []
+    history_data = {
+        'Cycle': [], 'Anomaly Score': [], 'Threshold': []
+    }
 
-    # AI Logu için placeholder text
-    with ai_log_container:
-        st.info("Sistem başlatıldı. Sensör verileri bekleniyor...")
-
-    # 2. Döngüyü Başlat
     for data_packet in streamer.stream():
-        # Stop butonuna basılırsa (Streamlit rerun yapar, burası kırılır)
 
-        # --- ORCHESTRATOR ANALİZİ ---
+        # 2. Guard Kontrolü (Fail-Safe)
+        if not guard.validate(data_packet):
+            continue  # Hatalı veriyi atla
+
+        # 3. Orchestrator Analizi
         decision = orchestrator.diagnose(data_packet)
         current_cycle = data_packet['cycle']
         loss = decision['loss']
         threshold = decision['threshold']
         priority = decision['priority']
 
-        # --- VERİ GÜNCELLEME ---
-        history_cycles.append(current_cycle)
-        history_loss.append(loss)
-        history_threshold.append(threshold)
+        # 4. Metrik Takibi (Ground Truth Simülasyonu)
+        # NASA setinde genelde 130. döngüden sonra bozulma başlar.
+        # Bu yüzden 130 sonrasını "Gerçek Hata" (1), öncesini "Normal" (0) kabul ediyoruz.
+        simulated_ground_truth = 1 if current_cycle > 90 else 0
+        predicted_class = 1 if priority >= 2 else 0  # Warning veya Critical ise Hata(1)
 
-        # Veri seti çok şişmesin, son 60 veriyi tut (Kayar Pencere)
-        if len(history_cycles) > 60:
-            history_cycles.pop(0)
-            history_loss.pop(0)
-            history_threshold.pop(0)
+        evaluator.add_record(simulated_ground_truth, predicted_class, probability=loss)
 
-        # --- METRİKLERİ GÜNCELLE ---
-        cycle_metric.metric("Döngü (Cycle)", f"{int(current_cycle)}")
-        loss_metric.metric("Hata Skoru (MSE)", f"{loss:.4f}")
+        # Sidebar İstatistiklerini Güncelle
+        # Her döngüde generate_report çağırmak yerine basit hesap yapıyoruz
+        metric_cycle.text(f"Cycle: {int(current_cycle)}")
+        metric_accuracy.text(f"Anomalies Found: {sum(evaluator.y_pred)}")
 
-        # Renk ve Durum Ayarı
+        # 5. Grafik Verisi Güncelleme
+        history_data['Cycle'].append(current_cycle)
+        history_data['Anomaly Score'].append(loss)
+        history_data['Threshold'].append(threshold)
+
+        # Son 60 veriyi tut (Kayar Pencere)
+        df_chart = pd.DataFrame(history_data).tail(60)
+
+        # 6. Görselleştirme (Visualizer Kullanımı)
+        chart = DashboardVisualizer.create_anomaly_chart(df_chart)
+        if chart:
+            chart_placeholder.altair_chart(chart, use_container_width=True)
+
+        # 7. Üst Panel Güncelleme
+        cycle_disp.metric("Döngü", int(current_cycle))
+        loss_disp.metric("Hata Skoru", f"{loss:.4f}")
+
         status_text = decision['status']
         if priority == 1:
             status_html = f"<h3 class='status-normal'>🟢 {status_text}</h3>"
-            ai_status.info("Durum: Stabil")
+            ai_disp.info("AI: Hazır")
         elif priority == 2:
             status_html = f"<h3 class='status-warning'>⚠️ {status_text}</h3>"
-            ai_status.warning("Durum: İzleniyor")
+            ai_disp.warning("AI: İzliyor")
         else:  # Priority 4
             status_html = f"<h3 class='status-critical'>🚨 {status_text}</h3>"
-            ai_status.error("Durum: MÜDAHALE!")
+            ai_disp.error("AI: MÜDAHALE!")
 
-        status_metric.markdown(status_html, unsafe_allow_html=True)
+        status_disp.markdown(status_html, unsafe_allow_html=True)
 
-        # --- GRAFİK ÇİZİMİ (Altair) ---
-        chart_data = pd.DataFrame({
-            'Cycle': history_cycles,
-            'Anomaly Score': history_loss,
-            'Threshold': history_threshold
-        })
-
-        # Grafik katmanları
-        base = alt.Chart(chart_data).encode(x=alt.X('Cycle', axis=alt.Axis(title='Zaman (Döngü)')))
-
-        # Mavi çizgi: Anlık Hata
-        line_loss = base.mark_line(color='#00FFFF', strokeWidth=3).encode(
-            y=alt.Y('Anomaly Score', axis=alt.Axis(title='Hata Skoru')),
-            tooltip=['Cycle', 'Anomaly Score']
-        )
-
-        # Kırmızı kesikli çizgi: Eşik Değeri
-        line_thresh = base.mark_line(color='#FF4B4B', strokeDash=[5, 5]).encode(
-            y='Threshold'
-        )
-
-        # Grafiği birleştir ve bas
-        chart_placeholder.altair_chart(
-            (line_loss + line_thresh).properties(height=350),
-            use_container_width=True
-        )
-
-        # --- AI Tetikleme ve CrewAI Entegrasyonu ---
+        # 8. KRİTİK HATA VE AI TETİKLEME
         if priority == 4:
-            # 1. Önce görsel uyarıyı ver
-            with ai_log_container:
-                st.error(f"🔴 [Cycle {current_cycle}] KRİTİK EŞİK AŞILDI!")
-                st.write(f"Hata Skoru: **{loss:.4f}** > Limit: **{threshold * 1.25:.4f}**")
+            logger.critical(f"Kritik Hata! Cycle: {current_cycle}, Loss: {loss:.4f}")
+
+            with ai_log:
+                st.error(f"🔴 KRİTİK EŞİK AŞILDI! [Cycle {current_cycle}]")
+                st.write(f"Limit: {threshold * 1.25:.4f} | Mevcut: {loss:.4f}")
                 st.markdown("---")
-                st.warning("⚠️ CrewAI Ajanları Göreve Çağrılıyor... Lütfen Bekleyin.")
+                st.warning("⚠️ CrewAI Ajanları Göreve Çağrılıyor...")
 
-                # İlerlemeyi göstermek için bir spinner
-                with st.spinner('Analiz yapılıyor... (Diagnostician & Commander)'):
+                with st.spinner('Analiz yapılıyor (Groq Llama-3)...'):
                     try:
-                        # 2. CrewAI'ı Başlat
                         ai_crew = JetEngineCrew()
+                        # Veriyi stringe çevirip gönder
+                        report = ai_crew.run_mission(str(data_packet), f"{loss:.4f}")
 
-                        # Veriyi stringe çevirip gönderiyoruz
-                        crew_result = ai_crew.run_mission(
-                            sensor_data=str(data_packet),
-                            loss_score=f"{loss:.4f}"
-                        )
-
-                        # 3. Sonucu Ekrana Bas
                         st.success("✅ Analiz Tamamlandı!")
-                        st.markdown("### 📋 AI Müdahale Raporu")
-                        st.markdown(crew_result)  # Markdown formatında rapor
+                        st.markdown(report)
+
+                        # Raporu Loga da yaz
+                        logger.info("AI Raporu oluşturuldu.")
+
+                        # Son Metrik Raporunu Bas (Terminalde görebilirsin)
+                        recall, acc, f1, auc = evaluator.generate_report()
+                        st.info(f"📊 Session Metrics -> Recall: {recall:.2f} | F1: {f1:.2f}")
 
                     except Exception as e:
-                        st.error(f"AI Hatası: API Anahtarı eksik olabilir. Detay: {e}")
+                        st.error(f"AI Hatası: {e}")
+                        logger.error(f"AI Hatası: {e}")
 
-            # Demoda rapor okunsun diye biraz bekle ve durdur
-            st.error("🛑 SİMÜLASYON SONLANDIRILDI.")
-            break
+            time.sleep(10)  # Rapor okunsun diye bekle
+            st.stop()
+
         time.sleep(speed)

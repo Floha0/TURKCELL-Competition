@@ -1,3 +1,5 @@
 {
-  "model_file_index": 1
+  "model_file_index": 1,
+  "data_col_names": ["unit_number", "cycle", "setting1", "setting2", "setting3", "sensor_measurement1", "sensor_measurement2", "sensor_measurement3", "sensor_measurement4", "sensor_measurement5", "sensor_measurement6", "sensor_measurement7", "sensor_measurement8", "sensor_measurement9", "sensor_measurement10", "sensor_measurement11", "sensor_measurement12", "sensor_measurement13", "sensor_measurement14", "sensor_measurement15", "sensor_measurement16", "sensor_measurement17", "sensor_measurement18", "sensor_measurement19", "sensor_measurement20", "sensor_measurement21"],
+  "drop_columns": ["sensor_measurement1", "sensor_measurement5", "sensor_measurement6", "sensor_measurement10", "sensor_measurement16", "sensor_measurement18", "sensor_measurement19", "setting1", "setting2", "setting3"]
 }

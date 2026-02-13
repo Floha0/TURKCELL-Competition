@@ -1,11 +1,12 @@
-from config.paths import TRAIN_FILE
+from config.paths import TRAIN_FILE, SETTINGS_FILE
 import pandas as pd
 #import time
+import json
 
 class SensorStreamer:
     def __init__(self, engine_id=1):
         # NASA train data column names
-        self.columns = ['unit_number', 'cycle', 'setting1', 'setting2', 'setting3'] + [f"sensor_measurement{i}" for i in range(1, 22)]
+        self.columns = json.load(open(SETTINGS_FILE)).get('data_col_names')
         self.data = pd.read_csv(TRAIN_FILE, sep='\s+', header=None, names=self.columns)
 
         # Gets the desired engine with provided engine id

@@ -3,6 +3,7 @@ Eğer RiskLevel == Low: Logla, geç. (Dashboard'da yeşil ışık yak).
 
 Eğer RiskLevel == Critical: CrewAI'ı tetikle! (Dashboard'da kırmızı alarm ve AI düşünme animasyonu başlat).
 """
+import json
 
 import pandas as pd
 import numpy as np
@@ -14,12 +15,15 @@ from pathlib import Path
 ROOT_DIR = Path(__file__).resolve().parent.parent.parent
 sys.path.append(str(ROOT_DIR))
 
-from config.paths import WATCHDOG_MODEL_PATH, SCALER_PATH
+from config.paths import WATCHDOG_MODEL_PATH, SCALER_PATH, SETTINGS_FILE
+from src.utils.logger import logger
+from src.stats_engine.guard import DataGuard
 
 
 class Orchestrator:
     def __init__(self):
-        print("🔧 Orchestrator başlatılıyor...")
+        logger.info("Orchestrator başlatılıyor...")
+        self.guard = DataGuard()
         self.scaler = self._load_model(SCALER_PATH)
         self.model_packet = self._load_model(WATCHDOG_MODEL_PATH)
 
@@ -32,9 +36,7 @@ class Orchestrator:
             raise RuntimeError("Model yüklenemedi! Önce train_stats.py çalıştırın.")
 
         # Atılacak sensörler (Eğitimdekiyle AYNI olmalı)
-        self.drop_sensors = ['sensor_measurement1', 'sensor_measurement5', 'sensor_measurement6',
-                             'sensor_measurement10', 'sensor_measurement16', 'sensor_measurement18',
-                             'sensor_measurement19', 'setting1', 'setting2', 'setting3']
+        self.drop_sensors = json.load(open(SETTINGS_FILE)).get('drop_columns')
 
     def _load_model(self, path):
         try:
@@ -47,6 +49,13 @@ class Orchestrator:
         """
         Gelen tek satırlık veriyi analiz eder ve Öncelik (Priority) atar.
         """
+        if not self.guard.validate(data_packet):
+            logger.warning("Orchestrator: Invalid data packet rejected.")
+            return {
+                "loss": 0.0, "threshold": self.threshold,
+                "status": "INVALID DATA", "priority": 0, "color": "gray"
+            }
+
         # 1. Veriyi DataFrame'e çevir (Tek satır)
         df = pd.DataFrame([data_packet])
 
@@ -80,9 +89,12 @@ class Orchestrator:
             result["status"] = "CRITICAL FAILURE"
             result["priority"] = 4
             result["color"] = "red"
+            logger.warning(f"CRITICAL FAILURE Anomaly detected at Cycle {data_packet['cycle']}! Score: {loss:.4f}" + f"\n Result: {result}")
         elif loss > self.threshold:  # Eşiği geçtiyse UYARI
             result["status"] = "WARNING"
             result["priority"] = 2
             result["color"] = "orange"
+            logger.warning(f"WARNING Anomaly detected at Cycle {data_packet['cycle']}! Score: {loss:.4f}" + f"\n Result: {result}")
+
 
         return result
