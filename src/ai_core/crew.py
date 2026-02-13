@@ -26,6 +26,7 @@ sys.path.append(str(ROOT_DIR))
 
 dotenv.load_dotenv(ROOT_DIR / '.env.local')
 
+from src.ai_core.tools import AnalysisTools
 from config.paths import CONFIG_DIR, AGENTS_FILE, TASKS_FILE
 import os
 import yaml
@@ -64,7 +65,11 @@ class JetEngineCrew:
             backstory=self.agents_config['sensor_analyst']['backstory'],
             verbose=True,
             allow_delegation=False,
-            llm=self.model_name
+            llm=self.model_name,
+            tools=[
+                AnalysisTools.calculate_roc,
+                AnalysisTools.fetch_sensor_limits
+            ]
         )
 
         maintenance_commander = Agent(

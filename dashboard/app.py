@@ -249,48 +249,56 @@ if start_btn:
     # 1. Modülleri Başlat
     streamer = SensorStreamer(engine_id=engine_id)
     orchestrator = Orchestrator()
-    guard = DataGuard()  # YENİ: Guard
-    evaluator = PerformanceEvaluator()  # YENİ: Senin Metrik Sınıfın
+    guard = DataGuard()
+    evaluator = PerformanceEvaluator()
 
     history_data = {
         'Cycle': [], 'Anomaly Score': [], 'Threshold': []
     }
 
+    # --- YENİ: RUL için Grafik Datası ---
+    rul_history = []
+
     for data_packet in streamer.stream():
 
-        # 2. Guard Kontrolü (Fail-Safe)
+        # 2. Guard Kontrolü
         if not guard.validate(data_packet):
-            continue  # Hatalı veriyi atla
+            continue
 
-        # 3. Orchestrator Analizi
+            # 3. Orchestrator Analizi
         decision = orchestrator.diagnose(data_packet)
+
+        # --- VERİLERİ ÇEK ---
         current_cycle = data_packet['cycle']
         loss = decision['loss']
         threshold = decision['threshold']
         priority = decision['priority']
+        predicted_rul = decision.get('predicted_rul', -1)  # YENİ: RUL Verisi
 
-        # 4. Metrik Takibi (Ground Truth Simülasyonu)
-        # NASA setinde genelde 130. döngüden sonra bozulma başlar.
-        # Bu yüzden 130 sonrasını "Gerçek Hata" (1), öncesini "Normal" (0) kabul ediyoruz.
-        simulated_ground_truth = 1 if current_cycle > 90 else 0
-        predicted_class = 1 if priority >= 2 else 0  # Warning veya Critical ise Hata(1)
-
+        # 4. Metrik Takibi
+        simulated_ground_truth = 1 if current_cycle > 130 else 0
+        predicted_class = 1 if priority >= 2 else 0
         evaluator.add_record(simulated_ground_truth, predicted_class, probability=loss)
 
-        # Sidebar İstatistiklerini Güncelle
-        # Her döngüde generate_report çağırmak yerine basit hesap yapıyoruz
+        # --- YENİ: Sidebar İstatistiklerini Güncelle ---
         metric_cycle.text(f"Cycle: {int(current_cycle)}")
         metric_accuracy.text(f"Anomalies Found: {sum(evaluator.y_pred)}")
+
+        # RUL Göstergesi (Kritikse Kırmızı Yap)
+        rul_text = f"Est. RUL: {int(predicted_rul)}"
+        if predicted_rul < 20:
+            metric_recall.markdown(f":red[**{rul_text}**]")  # Kritik!
+        else:
+            metric_recall.text(rul_text)
 
         # 5. Grafik Verisi Güncelleme
         history_data['Cycle'].append(current_cycle)
         history_data['Anomaly Score'].append(loss)
         history_data['Threshold'].append(threshold)
 
-        # Son 60 veriyi tut (Kayar Pencere)
         df_chart = pd.DataFrame(history_data).tail(60)
 
-        # 6. Görselleştirme (Visualizer Kullanımı)
+        # 6. Görselleştirme
         chart = DashboardVisualizer.create_anomaly_chart(df_chart)
         if chart:
             chart_placeholder.altair_chart(chart, use_container_width=True)
@@ -300,12 +308,14 @@ if start_btn:
         loss_disp.metric("Hata Skoru", f"{loss:.4f}")
 
         status_text = decision['status']
+
+        # Durum Göstergesi (Priority'ye göre)
         if priority == 1:
             status_html = f"<h3 class='status-normal'>🟢 {status_text}</h3>"
-            ai_disp.info("AI: Hazır")
+            ai_disp.info(f"RUL: {int(predicted_rul)}")  # Bilgi olarak göster
         elif priority == 2:
             status_html = f"<h3 class='status-warning'>⚠️ {status_text}</h3>"
-            ai_disp.warning("AI: İzliyor")
+            ai_disp.warning(f"RUL Düşüyor: {int(predicted_rul)}")
         else:  # Priority 4
             status_html = f"<h3 class='status-critical'>🚨 {status_text}</h3>"
             ai_disp.error("AI: MÜDAHALE!")
@@ -319,22 +329,31 @@ if start_btn:
             with ai_log:
                 st.error(f"🔴 KRİTİK EŞİK AŞILDI! [Cycle {current_cycle}]")
                 st.write(f"Limit: {threshold * 1.25:.4f} | Mevcut: {loss:.4f}")
+
+                # --- YENİ: RUL Bilgisini Ekrana Bas ---
+                st.metric(label="Tahmini Kalan Ömür (RUL)", value=f"{int(predicted_rul)} Döngü", delta="-Kritik Seviye",
+                          delta_color="inverse")
+
                 st.markdown("---")
                 st.warning("⚠️ CrewAI Ajanları Göreve Çağrılıyor...")
 
                 with st.spinner('Analiz yapılıyor (Groq Llama-3)...'):
                     try:
                         ai_crew = JetEngineCrew()
-                        # Veriyi stringe çevirip gönder
-                        report = ai_crew.run_mission(str(data_packet), f"{loss:.4f}")
+
+                        # --- YENİ: RUL Bilgisini AI Context'ine Ekle ---
+                        # Bu sayede Agent raporunda "Motorun 15 döngü ömrü kaldı" diyebilecek.
+                        ai_input_data = f"""
+                        SENSOR TELEMETRY: {str(data_packet)}
+                        PREDICTED REMAINING USEFUL LIFE (RUL): {int(predicted_rul)} CYCLES
+                        """
+
+                        report = ai_crew.run_mission(ai_input_data, f"{loss:.4f}")
 
                         st.success("✅ Analiz Tamamlandı!")
                         st.markdown(report)
 
-                        # Raporu Loga da yaz
                         logger.info("AI Raporu oluşturuldu.")
-
-                        # Son Metrik Raporunu Bas (Terminalde görebilirsin)
                         recall, acc, f1, auc = evaluator.generate_report()
                         st.info(f"📊 Session Metrics -> Recall: {recall:.2f} | F1: {f1:.2f}")
 
@@ -342,7 +361,7 @@ if start_btn:
                         st.error(f"AI Hatası: {e}")
                         logger.error(f"AI Hatası: {e}")
 
-            time.sleep(10)  # Rapor okunsun diye bekle
+            time.sleep(10)
             st.stop()
 
         time.sleep(speed)
