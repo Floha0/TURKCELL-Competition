@@ -28,7 +28,7 @@ Plaintext
 
 jet_engine_guard/
 ├── config/
-│   ├── settings.yaml        # Simülasyon hızı, sensör kolon isimleri
+│   ├── settings.json        # Simülasyon hızı, sensör kolon isimleri
 │   └── agents.yaml          # CrewAI ajanlarının promptları ve rolleri
 ├── data/
 │   ├── raw/                 # NASA CMAPSS dosyaları (train_FD001.txt vb.)

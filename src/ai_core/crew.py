@@ -26,81 +26,83 @@ sys.path.append(str(ROOT_DIR))
 
 dotenv.load_dotenv(ROOT_DIR / '.env.local')
 
+from config.paths import CONFIG_DIR, AGENTS_FILE, TASKS_FILE
 import os
+import yaml
 from crewai import Agent, Task, Crew, Process
 
 
 class JetEngineCrew:
     def __init__(self):
-        # API Anahtarını kontrol et
+        # 1. API Anahtarı Kontrolü
         api_key = os.getenv("GROQ_API_KEY")
         if not api_key:
-            print("❌ UYARI: GROQ_API_KEY bulunamadı! Terminalden export ettiğine emin ol.")
+            print("❌ WARNING: GROQ_API_KEY not found! Please export it in your terminal.")
 
-        # MODEL ADI (String olarak)
-        # CrewAI, "groq/" ön ekini görünce otomatik olarak Groq API'sini kullanır.
+        # Model Tanımı (LiteLLM Formatı)
         self.model_name = "groq/llama-3.3-70b-versatile"
 
+        # 2. Konfigürasyon Dosyalarını Yükle
+
+        self.configs_path = CONFIG_DIR
+        self.agents_config = self._load_yaml(AGENTS_FILE)
+        self.tasks_config = self._load_yaml(TASKS_FILE)
+
+    def _load_yaml(self, path):
+        with open(path, 'r') as file:
+            return yaml.safe_load(file)
+
     def run_mission(self, sensor_data, loss_score):
-        # --- 1. AJAN: TEŞHİS UZMANI ---
-        diagnostician = Agent(
-            role='Kıdemli Jet Motoru Teknisyeni',
-            goal='Sensör verilerindeki anomaliyi analiz et ve kök nedeni bul.',
-            backstory="""Sen NASA ve GE'de çalışmış, 20 yıllık tecrübesi olan bir motor uzmanısın. 
-            Sayısal verileri okuyup motorun hangi parçasının (Fan, Kompresör, Türbin) arızalandığını 
-            anında anlarsın.""",
+        """
+        Orchestrates the AI crew to analyze the failure.
+        """
+
+        # --- AGENTLER (YAML'dan gelen verilerle) ---
+        sensor_analyst = Agent(
+            role=self.agents_config['sensor_analyst']['role'],
+            goal=self.agents_config['sensor_analyst']['goal'],
+            backstory=self.agents_config['sensor_analyst']['backstory'],
             verbose=True,
             allow_delegation=False,
-            llm=self.model_name  # String olarak veriyoruz
+            llm=self.model_name
         )
 
-        # --- 2. AJAN: KRİZ YÖNETİCİSİ ---
-        commander = Agent(
-            role='Acil Durum Müdahale Lideri',
-            goal='Teşhis raporuna göre en güvenli aksiyon planını oluştur.',
-            backstory="""Sen endüstriyel felaketleri önlemekle görevli bir güvenlik liderisin. 
-            Risk almazsın. Önceliğin insan hayatı ve ekipman güvenliğidir. 
-            Net, kısa ve emir kipiyle konuşursun.""",
+        maintenance_commander = Agent(
+            role=self.agents_config['maintenance_commander']['role'],
+            goal=self.agents_config['maintenance_commander']['goal'],
+            backstory=self.agents_config['maintenance_commander']['backstory'],
             verbose=True,
             allow_delegation=False,
-            llm=self.model_name  # String olarak veriyoruz
+            llm=self.model_name
         )
 
-        # --- GÖREVLER ---
-        analysis_task = Task(
-            description=f"""
-            Şu an bir Jet Motorunda KRİTİK HATA (Priority 4) tespit edildi.
-            İstatistiksel Hata Skoru: {loss_score} (Normalin çok üzerinde!)
+        # --- GÖREVLER (YAML'dan gelen verilerle & Formatlayarak) ---
 
-            Gelen son sensör verisi şudur:
-            {sensor_data}
-
-            GÖREVİN:
-            1. Verilen sensör değerlerini incele.
-            2. Hangi sensörlerin limit dışı olduğunu tespit et.
-            3. Bu durumun fiziksel nedenini (Örn: Kompresör stall, yüksek sıcaklık) açıkla.
-            """,
-            expected_output="Maddeler halinde teknik arıza analizi raporu.",
-            agent=diagnostician
+        # YAML içindeki {variable} kısımlarını gerçek verilerle dolduruyoruz
+        formatted_diagnosis_desc = self.tasks_config['diagnosis_task']['description'].format(
+            loss_score=loss_score,
+            sensor_data=sensor_data
         )
 
-        action_task = Task(
-            description="""
-            Teşhis raporunu oku. Operasyon ekibine 3 maddelik ACİL MÜDAHALE PLANI hazırla.
-            Emir kipi kullan (Örn: 'Motoru kapat', 'Vanayı aç').
-            """,
-            expected_output="3 maddelik acil eylem listesi.",
-            agent=commander
+        diagnosis_task = Task(
+            description=formatted_diagnosis_desc,
+            expected_output=self.tasks_config['diagnosis_task']['expected_output'],
+            agent=sensor_analyst
+        )
+
+        action_plan_task = Task(
+            description=self.tasks_config['action_plan_task']['description'],
+            expected_output=self.tasks_config['action_plan_task']['expected_output'],
+            agent=maintenance_commander
         )
 
         # --- EKİBİ KUR ---
         crew = Crew(
-            agents=[diagnostician, commander],
-            tasks=[analysis_task, action_task],
+            agents=[sensor_analyst, maintenance_commander],
+            tasks=[diagnosis_task, action_plan_task],
             process=Process.sequential,
             verbose=True,
-            memory=False,  # <--- İŞTE ÇÖZÜM: Hafızayı kapatıyoruz ki OpenAI aramasın.
+            memory=False,  # OpenAI hatasını engeller
         )
 
-        result = crew.kickoff()
-        return result
+        return crew.kickoff()

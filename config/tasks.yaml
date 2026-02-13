@@ -1,0 +1,31 @@
+diagnosis_task:
+  description: >
+    A CRITICAL FAILURE (Priority 4) has been detected in Engine Unit #1.
+    
+    INPUT DATA:
+    - Statistical Anomaly Score (MSE): {loss_score} (Threshold exceeded!)
+    - Real-time Telemetry Snapshot: {sensor_data}
+    
+    Your mission is to perform a Root Cause Analysis (RCA):
+    1. Identify specifically which sensors are deviating from nominal ranges.
+    2. Analyze the correlation between deviating sensors (e.g., T24 vs W24).
+    3. Determine the physical failure mode (e.g., High Pressure Compressor Stall, Turbine Blade Creep, Bearing Failure).
+    4. Assess the severity of the failure based on the deviation magnitude.
+  expected_output: >
+    A structured technical report containing:
+    - [Violating Sensors]: List of specific sensors with abnormal readings.
+    - [Failure Mode]: The specific mechanical/thermal issue identified.
+    - [Technical Reasoning]: A concise explanation of why this failure occurred based on the data.
+
+action_plan_task:
+  description: >
+    Review the Technical Diagnosis Report provided by the Senior Engineer.
+    Based on the identified failure mode, generate a critical response plan.
+    
+    You must provide:
+    1. IN-FLIGHT EMERGENCY ACTIONS: Immediate steps for the pilot (e.g., Idle Throttle, Engage Fire Suppression).
+    2. GROUND MAINTENANCE ORDERS: Specific repair actions for the hangar crew (e.g., Borescope inspection of Stage 4, Replace Fuel Nozzle).
+  expected_output: >
+    A strictly formatted SAFETY & ACTION REPORT:
+    - **EMERGENCY PROTOCOL**: 3 clear, imperative commands for immediate execution.
+    - **MAINTENANCE TICKET**: The required inspection or replacement procedure.
