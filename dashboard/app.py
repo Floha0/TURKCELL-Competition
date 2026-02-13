@@ -7,6 +7,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 import plotly.graph_objects as go
 import plotly.express as px
+from datetime import datetime
 
 # --- ENV AYARLARI ---
 load_dotenv()
@@ -33,7 +34,15 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="collapsed"
 )
-
+# --- METRİK HAFIZASI ---
+if 'final_metrics' not in st.session_state:
+    st.session_state.final_metrics = None
+# --- SESSION STATE (Hafıza Yönetimi) ---
+if 'ai_report_ready' not in st.session_state:
+    if 'last_heatmap' not in st.session_state:
+        st.session_state.last_heatmap = None
+    st.session_state.ai_report_ready = False
+    st.session_state.report_content = ""
 # --- CSS ---
 st.markdown("""
 <style>
@@ -114,8 +123,11 @@ with row2_col2: ai_terminal_placeholder = st.empty()
 st.subheader("📡 SENSOR ARRAY STATUS")
 sensor_chart_placeholder = st.empty()
 
+# TODO: Heatmapi fixle
 # --- ANA DÖNGÜ ---
 if start_btn:
+    st.session_state.ai_report_ready = False
+    st.session_state.final_metrics = None
     logger.info("Visual Simulation Started.")
 
     streamer = SensorStreamer(engine_id=engine_id)
@@ -191,57 +203,105 @@ if start_btn:
         terminal_html = "<div class='terminal-box'>" + "<br>".join(terminal_logs) + "</div>"
         ai_terminal_placeholder.markdown(terminal_html, unsafe_allow_html=True)
 
-        # F. Heatmap
-        sensor_df = pd.DataFrame([data_packet]).drop(
-            columns=['unit_number', 'cycle', 'setting1', 'setting2', 'setting3'])
-        fig_heat = px.imshow(sensor_df, aspect="auto", color_continuous_scale="Viridis",
-                             labels=dict(x="Sensor", y="Value"))
+        # F. Heatmap (GÜNCELLENDİ)
+        sensor_cols = [f'sensor_measurement{i}' for i in range(1, 22)]
+        sensor_df = pd.DataFrame([data_packet])[sensor_cols]
+
+        fig_heat = px.imshow(
+            sensor_df,
+            aspect="auto",
+            color_continuous_scale="Viridis",
+            labels=dict(x="Sensor", y="Value"),
+            zmin=sensor_df.min().min(),  # Renk skalasını sabitlemek için
+            zmax=sensor_df.max().max()
+        )
         fig_heat.update_layout(height=100, margin=dict(l=0, r=0, t=0, b=0), paper_bgcolor="rgba(0,0,0,0)")
         fig_heat.update_xaxes(showticklabels=False)
         fig_heat.update_yaxes(showticklabels=False)
+
+        # Hafızaya kaydet ve çiz
+        st.session_state.last_heatmap = fig_heat
         sensor_chart_placeholder.plotly_chart(fig_heat, use_container_width=True, config=plotly_config)
 
         # 5. KRİTİK HATA VE AI TETİKLEME
         if priority == 4:
             logger.critical(f"Kritik Hata! Cycle: {current_cycle}")
 
-            terminal_logs.append(f"> 🚨 CRITICAL FAULT DETECTED!")
-            terminal_logs.append(f"> INITIATING AI AGENTS...")
-            ai_terminal_placeholder.markdown("<div class='terminal-box'>" + "<br>".join(terminal_logs) + "</div>",
-                                             unsafe_allow_html=True)
+            # AI Raporu oluşturulmadıysa oluştur
+            if not st.session_state.ai_report_ready:
+                with st.spinner('🤖 AI CREW ENGAGED: ANALYZING TELEMETRY...'):
+                    try:
+                        ai_crew = JetEngineCrew()
+                        ai_input_data = f"SENSOR TELEMETRY: {str(data_packet)}\nPREDICTED RUL: {int(predicted_rul)} CYCLES"
+                        report = ai_crew.run_mission(ai_input_data, f"{loss:.4f}")
 
-            with st.spinner('🤖 AI CREW ENGAGED: ANALYZING TELEMETRY...'):
+                        # Raporu ve Metni Hafızaya Kaydet
+                        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        st.session_state.report_content = f"""
+        =======================================================
+        🚀 JETGUARD DEFENSE SYSTEM - FAILURE DOSSIER
+        =======================================================
+        DATE       : {timestamp}
+        ENGINE ID  : {engine_id}
+        FAIL CYCLE : {int(current_cycle)}
+        RISK SCORE : {loss:.6f}
+        EST. RUL   : {int(predicted_rul)} Cycles
+        =======================================================
+
+        [SENSOR TELEMETRY SNAPSHOT]
+        {str(data_packet)}
+
+        =======================================================
+        🤖 AI DIAGNOSIS & ACTION PLAN
+        =======================================================
+        {report}
+                                """
+                        st.session_state.ai_report_text_only = report  # Ekranda göstermek için
+                        st.session_state.ai_report_ready = True
+
+                    except Exception as e:
+                        st.error(f"AI FAILURE: {e}")
+
+        # Rapor Hazırsa Ekranda Göster
+        if st.session_state.ai_report_ready:
+            st.divider()
+            st.success("✅ MISSION COMPLETE: AI DIAGNOSIS RECEIVED")
+
+            # --- METRİKLERİ HESAPLA VE HAFIZAYA AL ---
+            if st.session_state.final_metrics is None:
                 try:
-                    ai_crew = JetEngineCrew()
+                    recall, acc, f1, auc = evaluator.generate_report()
+                    st.session_state.final_metrics = {"rec": recall, "f1": f1, "acc": acc}
+                except:
+                    st.session_state.final_metrics = {"rec": 0.0, "f1": 0.0, "acc": 0.0}
 
-                    ai_input_data = f"SENSOR TELEMETRY: {str(data_packet)}\nPREDICTED RUL: {int(predicted_rul)} CYCLES"
-                    report = ai_crew.run_mission(ai_input_data, f"{loss:.4f}")
+            # --- METRİKLERİ EKRANA BAS ---
+            m1, m2, m3 = st.columns(3)
+            m1.metric("Final Recall", f"{st.session_state.final_metrics['rec']:.2f}")
+            m2.metric("Final F1 Score", f"{st.session_state.final_metrics['f1']:.2f}")
+            m3.metric("Final Accuracy", f"{st.session_state.final_metrics['acc']:.2f}")
 
-                    st.divider()
-                    st.success("✅ MISSION COMPLETE: AI DIAGNOSIS RECEIVED")
-                    st.markdown(f"""
+            # --- HEATMAP'İ FİNALDE DE GÖSTER ---
+            if st.session_state.last_heatmap:
+                st.subheader("📡 FINAL SENSOR ARRAY SNAPSHOT")
+                st.plotly_chart(st.session_state.last_heatmap, use_container_width=True, config={'staticPlot': True})
+
+            st.markdown(f"""
                     <div style="background-color: #0d1117; border: 1px solid #30363d; padding: 20px; border-radius: 10px;">
-                        {report}
+                        {st.session_state.ai_report_text_only}
                     </div>
                     """, unsafe_allow_html=True)
 
-                    # METRİK RAPORU (Durdurmadan Önce)
-                    try:
-                        recall, acc, f1, auc = evaluator.generate_report()
+            st.download_button(
+                label="📥 DOWNLOAD MISSION DOSSIER (TXT)",
+                data=st.session_state.report_content,
+                file_name=f"failure_report_eng{engine_id}.txt",
+                mime="text/plain",
+                use_container_width=True
+            )
 
-                        col_m1, col_m2, col_m3 = st.columns(3)
-                        col_m1.metric("Final Recall", f"{recall:.2f}")
-                        col_m2.metric("Final F1", f"{f1:.2f}")
-                        col_m3.metric("Final Accuracy", f"{acc:.2f}")
-
-                    except Exception as metric_err:
-                        logger.error(f"Metric Error: {metric_err}")
-                        st.warning("Not enough data to calculate AUC.")
-
-                except Exception as e:
-                    st.error(f"AI FAILURE: {e}")
-
-            time.sleep(15)
-            st.stop()
+            # Simülasyonu burada kilitliyoruz ama butonu öldürmüyoruz
+            st.warning("⚠️ SIMULATION HALTED DUE TO CRITICAL FAILURE. REPORT IS READY FOR DOWNLOAD.")
+            st.stop()  # Bu sefer düzgün çalışacak çünkü data önceden hafızaya alındı.
 
         time.sleep(speed)
