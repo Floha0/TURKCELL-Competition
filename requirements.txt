@@ -4,3 +4,5 @@ scikit-learn
 matplotlib
 python-dotenv
 openai
+seaborn
+streamlit
