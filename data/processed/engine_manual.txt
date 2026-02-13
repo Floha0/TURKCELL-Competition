@@ -1,0 +1,34 @@
+=== CFM56-7B TECHNICAL MAINTENANCE MANUAL ===
+SECTION: TROUBLESHOOTING & FAULT ISOLATION
+
+[FAULT CODE: HPC-STALL-01]
+SYMPTOM: Abnormal rise in Sensor 11 (Static Pressure) and Sensor 4 (EGT).
+ROOT CAUSE: High Pressure Compressor (HPC) Stall due to airflow disruption.
+IMMEDIATE ACTION:
+1. Retard throttle to IDLE immediately.
+2. Turn on Continuous Ignition.
+3. Monitor EGT (Exhaust Gas Temp). If EGT exceeds 950C, initiate Engine Shutdown.
+MAINTENANCE ACTION:
+1. Perform Borescope Inspection of HPC Stages 1-9. Look for nicks or bent blades.
+2. Inspect Variable Bleed Valves (VBV) for blockage.
+3. Check VSV (Variable Stator Vanes) rigging angles.
+
+[FAULT CODE: LPT-VIB-09]
+SYMPTOM: High vibration in Sensor 20 or Sensor 21.
+ROOT CAUSE: Low Pressure Turbine (LPT) blade imbalance or bearing wear.
+IMMEDIATE ACTION:
+1. Reduce thrust to 50% N1.
+2. Monitor vibration levels.
+MAINTENANCE ACTION:
+1. Inspect LPT blades for shingling.
+2. Check No. 4 and No. 5 Bearing oil scavenge filters for metal chips.
+
+[FAULT CODE: FUEL-FLOW-HIGH]
+SYMPTOM: Divergence in Fuel Flow (Sensor 13) vs N2 Speed.
+ROOT CAUSE: Fuel Nozzle clogging or HMU (Hydromechanical Unit) internal leak.
+ACTION:
+1. Replace Fuel Nozzles.
+2. Perform Leak Check on HMU.
+
+[general_safety]
+WARNING: Always allow engine to cool down for 5 minutes (Cool-down run) before shutdown to prevent shaft bowing.

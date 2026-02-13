@@ -1,5 +1,5 @@
 from crewai.tools import tool
-
+from config.paths import MANUAL_DIR
 
 class AnalysisTools:
 
@@ -50,3 +50,32 @@ class AnalysisTools:
             return f"LIMITS for {key} ({info['name']}): Min={info['min']}, Max={info['max']}"
         else:
             return f"No limit data found for {sensor_name}. Assume standard deviation check."
+
+    @tool("Consult Technical Manual")
+    def consult_manual(search_query: str):
+        """
+        Searches the 'engine_manual.txt' for specific failure symptoms or components
+        (e.g., 'Compressor', 'Vibration', 'Sensor 11').
+        Returns the relevant section from the maintenance manual.
+        """
+        manual_path = MANUAL_DIR
+
+        try:
+            with open(manual_path, 'r') as f:
+                content = f.read()
+
+            # Basit Arama Mantığı
+            results = []
+            paragraphs = content.split('\n\n')  # Paragraflara böl
+
+            for p in paragraphs:
+                if search_query.lower() in p.lower():
+                    results.append(p)
+
+            if not results:
+                return "No specific manual entry found for this query. Use standard protocol."
+
+            return "\n---\n".join(results)
+
+        except Exception as e:
+            return f"Error reading manual: {str(e)}"

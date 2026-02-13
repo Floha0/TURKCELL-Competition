@@ -78,7 +78,10 @@ class JetEngineCrew:
             backstory=self.agents_config['maintenance_commander']['backstory'],
             verbose=True,
             allow_delegation=False,
-            llm=self.model_name
+            llm=self.model_name,
+            tools = [
+                AnalysisTools.consult_manual,
+            ]
         )
 
         # --- GÖREVLER (YAML'dan gelen verilerle & Formatlayarak) ---

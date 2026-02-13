@@ -32,6 +32,9 @@ TEST_FILE = RAW_DATA_DIR / f"test_FD00{MODEL_FILE_INDEX}.txt"
 AGENTS_FILE = CONFIG_DIR / "agents.yaml"
 TASKS_FILE = CONFIG_DIR / "tasks.yaml"
 
+# MANUAL DIR
+MANUAL_DIR = DATA_DIR / "processed" / "engine_manual.txt"
+
 # Trained models dirs
 WATCHDOG_MODEL_PATH = SAVED_MODELS_DIR / "watchdog_model.pkl"
 SCALER_PATH = SAVED_MODELS_DIR / "scaler.pkl"
