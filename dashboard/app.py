@@ -1,367 +1,247 @@
-import streamlit
-# TODO: streamlit entegrasyonu / görselleştirme
-"""
-Görselleştirme:
-
-    Sol Panel: Motorun anlık sensör değerleri (Hız göstergeleri gibi gauge chartlar).
-
-    Orta Panel: Risk Grafiği (Zamanla değişen risk skoru).
-
-    Sağ Panel (AI Logs): "Sistem Stabil..." diye başlar, hata anında "AI Analiz Ediyor..." yazar ve CrewAI'dan gelen metni daktilo efektiyle basar.
-
-    Alt Panel: Confusion Matrix görseli (Modelinizin ne kadar güvenilir olduğunu statik olarak gösterir).
-"""
-
-
-"""
- Gemini said
-
-Harika bir seçim. NASA'nın CMAPSS (Commercial Modular Aero-Propulsion System Simulation) veri seti bu iş için "altın standart"tır. Özellikle RUL (Remaining Useful Life) tahmini ve anomali tespiti için mükemmeldir. MVP (Minimum Viable Product) olduğu için mimariyi biraz daha "gösterişe uygun" (demo-friendly) ve yönetilebilir hale getireceğiz.
-
-Gerçek zamanlı sensör yerine "Simüle Edilmiş Akış" (Stream Simulation) kullanacağız. Yani veriyi satır satır okuyup sanki o an geliyormuş gibi sisteme sokacağız.
-
-İşte NASA CMAPSS verisiyle çalışacak, Python tabanlı MVP Proje Şeması:
-I. Proje Klasör Yapısı (Directory Tree)
-
-Bu yapı, hem model eğitimini (offline) hem de canlı demoyu (online) kapsar.
-Plaintext
-
-jet_engine_guard/
-├── config/
-│   ├── settings.json        # Simülasyon hızı, sensör kolon isimleri
-│   └── agents.yaml          # CrewAI ajanlarının promptları ve rolleri
-├── data/
-│   ├── raw/                 # NASA CMAPSS dosyaları (train_FD001.txt vb.)
-│   ├── processed/           # Eğitim için temizlenmiş/hazırlanmış veri
-│   └── logs/                # MVP sırasında oluşan canlı loglar (json_db)
-├── models/
-│   ├── saved/               # Eğitilen .pkl modelleri (Scaler, PCA, Classifier)
-│   └── training/            # Modelleri eğiten scriptler (OFFLINE AŞAMA)
-│       ├── train_stats.py   # İstatistiksel model (Recall odaklı)
-│       └── train_rul.py     # Opsiyonel: Kalan ömür tahmini modeli
-├── src/
-│   ├── simulation/          # Veri akışını simüle eden modül
-│   │   └── streamer.py      # Dosyadan satır satır veri okuyan "Generator"
-│   ├── stats_engine/        # The Watchdog (Bekçi)
-│   │   ├── metrics.py       # Recall, ROC/AUC hesaplamaları
-│   │   └── guard.py         # Gelen veriyi eşik değeriyle kontrol eden yer
-│   ├── ai_core/             # The Brain (AI)
-│   │   ├── crew.py          # CrewAI orkestrasyonu
-│   │   └── tools.py         # AI'ın kullanacağı özel araçlar
-│   ├── orchestrator/        # Karar mekanizması (Priority 1-4 ataması)
-│   │   └── manager.py
-│   └── utils/
-│       ├── logger.py        # JSON loglama sistemi
-│       └── visualizer.py    # Grafik çizim yardımcıları
-├── dashboard/               # Arayüz Katmanı
-│   └── app.py               # Streamlit ana uygulaması (Çalıştırılacak dosya)
-├── requirements.txt
-└── README.md
-
-II. Modül Detayları ve Sorumluluklar
-
-MVP'de iki ana aşama olacak: 1. Hazırlık (Eğitim) ve 2. Canlı Demo (Run-time). Kodları buna göre ayırıyoruz.
-A. Hazırlık Aşaması (models/training/)
-
-Yarışma öncesi çalıştırıp modelleri kaydedeceğiniz yer.
-
-    train_stats.py:
-
-        Girdi: NASA train_FD001.txt verisi.
-
-        İşlem:
-
-            Sensör verilerini temizler.
-
-            Basit bir "Anomaly Detection" modeli eğitir (Örn: One-Class SVM veya basit bir Thresholding/Mahalanobis Distance).
-
-            Kritik Nokta: recall_score takıntılı optimizasyon burada yapılır. False Negative (Hatayı kaçırma) cezasını çok yüksek tutarak threshold (eşik) belirlenir.
-
-            Örn: "Sensör 2, 30 birim saparsa hata ver" kuralını matematiksel olarak çıkarır.
-
-        Çıktı: watchdog_model.pkl ve scaler.pkl dosyalarını models/saved/ altına kaydeder.
-
-B. Canlı Demo Aşaması (Runtime)
-1. Simülasyon (src/simulation/streamer.py)
-
-Gerçek sensörü taklit eder.
-
-    Fonksiyon: stream_engine_data(engine_id=1)
-
-    Görevi: NASA test setinden seçilen bir motorun verisini alır. Her çağrıldığında bir sonraki zaman döngüsünü (cycle) yield eder (döndürür).
-
-    Amaç: Streamlit arayüzü her "refresh" yaptığında yeni bir saniye geçmiş gibi veri sağlar.
-
-2. The Watchdog (src/stats_engine/guard.py)
-
-İlk savunma hattı.
-
-    Girdi: Streamer'dan gelen tek satırlık sensör verisi.
-
-    İşlem: saved/watchdog_model.pkl'i yükler ve veriyi sorar: "Bu normal mi?".
-
-    Recall Odaklı Mantık: Eğer model %1 bile şüphelenirse, bunu "Priority 3" veya "Priority 4" olarak etiketler. Güvenliği elden bırakmaz.
-
-    Çıktı: RiskLevel (Low, Medium, High, Critical).
-
-3. Orchestrator (src/orchestrator/manager.py)
-
-Trafik polisi.
-
-    Mantık:
-
-        Eğer RiskLevel == Low: Logla, geç. (Dashboard'da yeşil ışık yak).
-
-        Eğer RiskLevel == Critical: CrewAI'ı tetikle! (Dashboard'da kırmızı alarm ve AI düşünme animasyonu başlat).
-
-4. The Brain (src/ai_core/crew.py)
-
-Sadece sorun olduğunda devreye giren akıllı ekip.
-
-    Agentlar:
-
-        Sensor Analyst Agent: "Sensör 11 ve 12 artarken Sensör 7 düşmüş, bu kompresör arızasına işaret ediyor olabilir." yorumunu yapar.
-
-        Maintenance Planner Agent: "Bu motorun acil bakıma girmesi lazım, şu anki uçuş döngüsü tamamlanınca hangara çekin." aksiyonunu önerir.
-
-    Kullanım: LangChain üzerinden bu ajanlar birbirine data paslar ve final raporu oluşturur.
-
-5. Dashboard (dashboard/app.py)
-
-Jürinin göreceği ekran. Streamlit kütüphanesi kullanılacak.
-
-    Görselleştirme:
-
-        Sol Panel: Motorun anlık sensör değerleri (Hız göstergeleri gibi gauge chartlar).
-
-        Orta Panel: Risk Grafiği (Zamanla değişen risk skoru).
-
-        Sağ Panel (AI Logs): "Sistem Stabil..." diye başlar, hata anında "AI Analiz Ediyor..." yazar ve CrewAI'dan gelen metni daktilo efektiyle basar.
-
-        Alt Panel: Confusion Matrix görseli (Modelinizin ne kadar güvenilir olduğunu statik olarak gösterir).
-
-III. Proje Akış Senaryosu (Demo Sırası)
-
-Bunu yarışmada sunarken şu sırayla çalıştıracaksınız:
-
-    Terminal: python models/training/train_stats.py (Modelleri eğittiniz, bitti).
-
-    Terminal: streamlit run dashboard/app.py (Arayüz açıldı).
-
-    Ekranda:
-
-        "Start Simulation" butonuna basılır.
-
-        Grafikler NASA verisiyle oynamaya başlar (Motor çalışıyor).
-
-        İlk 50 döngü (cycle) her şey yeşil. (Priority 4-3-2 logic çalışmıyor, sadece izliyor).
-
-        Döngü 60'ta sensörlerde hafif sapma başlar.
-
-        Stats Engine: "Şüpheli durum!" der. (Priority 3).
-
-        Dashboard: Sarı ışık yanar. "AI Beklemede (Idle Analysis)" yazar.
-
-        Döngü 85'te değerler kopar.
-
-        Stats Engine: "KRİTİK HATA! RUL (Kalan Ömür) < 10 Cycle!" der. (Priority 4).
-
-        Orchestrator: AI Ajanlarını göreve çağırır.
-
-        Ekranda: CrewAI çalışır, analiz metnini ekrana basar: "Yakıt pompası basıncı kritik seviyede. Patlama riski var. Sistemi derhal kapatıyorum."
-"""
-
+import os
 import streamlit as st
 import pandas as pd
 import time
-import altair as alt
 import sys
 from pathlib import Path
-import os
+from dotenv import load_dotenv
+import plotly.graph_objects as go
+import plotly.express as px
+
+# --- ENV AYARLARI ---
+load_dotenv()
+os.environ["CREWAI_TELEMETRY_OPT_OUT"] = "true"
+os.environ["OPENAI_API_KEY"] = "NA"
+
 # --- PATH AYARLARI ---
-# Dashboard klasöründen bir üst dizine (kök) çıkıyoruz
 ROOT_DIR = Path(__file__).resolve().parent.parent
 sys.path.append(str(ROOT_DIR))
 
-from src.ai_core.crew import JetEngineCrew
+# --- MODÜL IMPORTLARI ---
 from src.simulation.streamer import SensorStreamer
 from src.orchestrator.manager import Orchestrator
-from src.utils.visualizer import DashboardVisualizer
-from src.stats_engine.metrics import PerformanceEvaluator
+from src.ai_core.crew import JetEngineCrew
 from src.utils.logger import logger
 from src.stats_engine.guard import DataGuard
-
-
-os.environ["CREWAI_TELEMETRY_OPT_OUT"] = "true"
-os.environ["OPENAI_API_KEY"] = "NA" # Sahte key, CrewAI kontrolünü geçmek için
+from src.utils.visualizer import DashboardVisualizer
+from src.stats_engine.metrics import PerformanceEvaluator
 
 # --- SAYFA YAPILANDIRMASI ---
-st.set_page_config(page_title="JetEngine Guard AI", page_icon="✈️", layout="wide")
+st.set_page_config(
+    page_title="JetGuard Defense System",
+    page_icon="🛡️",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
 
 # --- CSS ---
 st.markdown("""
 <style>
-    .status-normal { color: #00FF00; font-weight: bold; }
-    .status-warning { color: #FFA500; font-weight: bold; }
-    .status-critical { color: #FF0000; font-weight: bold; animation: blinker 1s linear infinite; }
+    .stApp { background-color: #0E1117; }
+    div[data-testid="stMetric"] { background-color: #161b22; border: 1px solid #30363d; padding: 10px; border-radius: 5px; color: #e6edf3; }
+    .terminal-box { background-color: #000000; color: #00FF00; font-family: 'Courier New', Courier, monospace; padding: 15px; border-radius: 5px; border-left: 5px solid #00FF00; height: 400px; overflow-y: auto; font-size: 14px; box-shadow: 0 0 10px rgba(0, 255, 0, 0.2); }
     @keyframes blinker { 50% { opacity: 0; } }
+    .critical-alert { color: red; font-weight: bold; font-size: 24px; animation: blinker 1s linear infinite; text-align: center; border: 2px solid red; padding: 10px; margin-bottom: 10px; }
 </style>
 """, unsafe_allow_html=True)
 
+
+# --- YARDIMCI FONKSİYONLAR ---
+def create_gauge(value, title, min_val, max_val, color="green", threshold=None):
+    """Plotly Gauge - Optimize Edilmiş"""
+
+    tick_step = (max_val - min_val) / 4
+
+    fig = go.Figure(go.Indicator(
+        mode="gauge+number",
+        value=value,
+        title={'text': title, 'font': {'size': 18, 'color': "white"}},
+        number={'font': {'size': 35, 'color': color, 'weight': 'bold'}},
+        gauge={
+            'axis': {
+                'range': [min_val, max_val],
+                'tickwidth': 2,
+                'tickcolor': "white",
+                'tickmode': 'linear',
+                'dtick': tick_step,
+                'tickfont': {'size': 14, 'color': '#AAAAAA'}
+            },
+            'bar': {'color': color, 'thickness': 0.8},
+            'bgcolor': "rgba(0,0,0,0)",
+            'borderwidth': 0,
+            'steps': [
+                {'range': [min_val, max_val], 'color': "#161b22"},
+            ]
+        }
+    ))
+    fig.update_layout(
+        paper_bgcolor="rgba(0,0,0,0)",
+        font={'color': "white"},
+        height=280,
+        margin=dict(l=35, r=35, t=50, b=35)
+    )
+    return fig
+
+
 # --- BAŞLIK ---
-st.title("✈️ JetEngine Guard: Autonomous AI Defense System")
-st.markdown("**Real-Time Anomaly Detection & Generative AI Diagnostics**")
+col_logo, col_title = st.columns([1, 6])
+with col_logo: st.image("https://cdn-icons-png.flaticon.com/512/900/900967.png", width=80)
+with col_title:
+    st.title("JETGUARD // AI DEFENSE SYSTEM")
+    st.caption("MISSION CONTROL: LIVE TELEMETRY & PREDICTIVE MAINTENANCE")
+
+st.divider()
 
 # --- SIDEBAR ---
 with st.sidebar:
-    st.header("🎮 Kontrol Paneli")
-    engine_id = st.number_input("Motor ID", 1, 100, 1)
-    speed = st.slider("Simülasyon Hızı", 0.01, 1.0, 0.05)
-    start_btn = st.button("🚀 SİSTEMİ BAŞLAT", type="primary")
+    st.header("⚙️ SİSTEM AYARLARI")
+    engine_id = st.number_input("Target Engine Unit", 1, 100, 1)
+    # TİTREME ÇÖZÜMÜ 1: Varsayılan hızı 0.1'e çektik (Daha kararlı)
+    speed = st.slider("Simulation Clock (sec)", 0.01, 1.0, 0.1)
+    start_btn = st.button("INITIATE SEQUENCE", type="primary", use_container_width=True)
+    st.info("System Ready...")
 
-    st.divider()
-    # Metrikleri göstermek için yer tutucular
-    st.subheader("📈 Canlı Performans")
-    metric_cycle = st.empty()
-    metric_accuracy = st.empty()
-    metric_recall = st.empty()
+# --- YERLEŞİM ---
+kpi_col1, kpi_col2, kpi_col3 = st.columns([1, 1, 2])
+with kpi_col1: rul_placeholder = st.empty()
+with kpi_col2: loss_placeholder = st.empty()
+with kpi_col3: status_placeholder = st.empty()
 
-# --- ARAYÜZ YERLEŞİMİ ---
-col1, col2, col3, col4 = st.columns(4)
-with col1: cycle_disp = st.empty()
-with col2: status_disp = st.empty()
-with col3: loss_disp = st.empty()
-with col4: ai_disp = st.empty()
+row2_col1, row2_col2 = st.columns([2, 1])
+with row2_col1: chart_placeholder = st.empty()
+with row2_col2: ai_terminal_placeholder = st.empty()
 
-st.divider()
-col_left, col_right = st.columns([2, 1])
-with col_left:
-    st.subheader("📊 Sensör Anomali Grafiği")
-    chart_placeholder = st.empty()
-with col_right:
-    st.subheader("🧠 AI Analiz Konsolu")
-    ai_log = st.container(height=400)
+st.subheader("📡 SENSOR ARRAY STATUS")
+sensor_chart_placeholder = st.empty()
 
 # --- ANA DÖNGÜ ---
 if start_btn:
-    logger.info("Simülasyon başlatıldı.")
+    logger.info("Visual Simulation Started.")
 
-    # 1. Modülleri Başlat
     streamer = SensorStreamer(engine_id=engine_id)
     orchestrator = Orchestrator()
     guard = DataGuard()
     evaluator = PerformanceEvaluator()
 
-    history_data = {
-        'Cycle': [], 'Anomaly Score': [], 'Threshold': []
-    }
+    history_data = {'Cycle': [], 'Anomaly Score': [], 'Threshold': []}
+    terminal_logs = ["System Initialized...", "Connecting to Satellite Stream...", "Data Link Established."]
 
-    # --- YENİ: RUL için Grafik Datası ---
-    rul_history = []
+    # TİTREME ÇÖZÜMÜ 2: Plotly Config (Statik Plot)
+    plotly_config = {'staticPlot': True, 'displayModeBar': False}
 
     for data_packet in streamer.stream():
 
-        # 2. Guard Kontrolü
-        if not guard.validate(data_packet):
-            continue
-
-            # 3. Orchestrator Analizi
+        if not guard.validate(data_packet): continue
         decision = orchestrator.diagnose(data_packet)
 
-        # --- VERİLERİ ÇEK ---
         current_cycle = data_packet['cycle']
         loss = decision['loss']
         threshold = decision['threshold']
         priority = decision['priority']
-        predicted_rul = decision.get('predicted_rul', -1)  # YENİ: RUL Verisi
+        predicted_rul = decision.get('predicted_rul', 0)
 
-        # 4. Metrik Takibi
-        simulated_ground_truth = 1 if current_cycle > 130 else 0
-        predicted_class = 1 if priority >= 2 else 0
-        evaluator.add_record(simulated_ground_truth, predicted_class, probability=loss)
-
-        # --- YENİ: Sidebar İstatistiklerini Güncelle ---
-        metric_cycle.text(f"Cycle: {int(current_cycle)}")
-        metric_accuracy.text(f"Anomalies Found: {sum(evaluator.y_pred)}")
-
-        # RUL Göstergesi (Kritikse Kırmızı Yap)
-        rul_text = f"Est. RUL: {int(predicted_rul)}"
-        if predicted_rul < 20:
-            metric_recall.markdown(f":red[**{rul_text}**]")  # Kritik!
-        else:
-            metric_recall.text(rul_text)
-
-        # 5. Grafik Verisi Güncelleme
         history_data['Cycle'].append(current_cycle)
         history_data['Anomaly Score'].append(loss)
         history_data['Threshold'].append(threshold)
 
-        df_chart = pd.DataFrame(history_data).tail(60)
+        # RECALL DÜZELTME: Ground Truth eşiğini 130'dan 90'a çektik.
+        # Artık 90'dan sonra gelen her uyarı "DOĞRU BİLİNMİŞ" sayılacak.
+        simulated_ground_truth = 1 if current_cycle > 90 else 0
+        predicted_class = 1 if priority >= 2 else 0
+        evaluator.add_record(simulated_ground_truth, predicted_class, probability=loss)
 
-        # 6. Görselleştirme
-        chart = DashboardVisualizer.create_anomaly_chart(df_chart)
-        if chart:
-            chart_placeholder.altair_chart(chart, use_container_width=True)
+        # --- GÖRSEL GÜNCELLEME ---
 
-        # 7. Üst Panel Güncelleme
-        cycle_disp.metric("Döngü", int(current_cycle))
-        loss_disp.metric("Hata Skoru", f"{loss:.4f}")
+        # A. RUL Gauge
+        rul_color = "#00FF00" if predicted_rul > 50 else "#FFA500" if predicted_rul > 20 else "#FF0000"
+        fig_rul = create_gauge(predicted_rul, "Est. RUL (Cycles)", 0, 200, rul_color, threshold=20)
+        # config parametresi eklendi
+        rul_placeholder.plotly_chart(fig_rul, use_container_width=True, config=plotly_config)
 
+        # B. Anomaly Gauge
+        loss_color = "#00FF00" if priority == 1 else "#FFA500" if priority == 2 else "#FF0000"
+        fig_loss = create_gauge(loss, "Anomaly Score", 0, threshold * 3, loss_color, threshold=threshold)
+        # config parametresi eklendi
+        loss_placeholder.plotly_chart(fig_loss, use_container_width=True, config=plotly_config)
+
+        # C. Status
         status_text = decision['status']
-
-        # Durum Göstergesi (Priority'ye göre)
-        if priority == 1:
-            status_html = f"<h3 class='status-normal'>🟢 {status_text}</h3>"
-            ai_disp.info(f"RUL: {int(predicted_rul)}")  # Bilgi olarak göster
-        elif priority == 2:
-            status_html = f"<h3 class='status-warning'>⚠️ {status_text}</h3>"
-            ai_disp.warning(f"RUL Düşüyor: {int(predicted_rul)}")
-        else:  # Priority 4
-            status_html = f"<h3 class='status-critical'>🚨 {status_text}</h3>"
-            ai_disp.error("AI: MÜDAHALE!")
-
-        status_disp.markdown(status_html, unsafe_allow_html=True)
-
-        # 8. KRİTİK HATA VE AI TETİKLEME
         if priority == 4:
-            logger.critical(f"Kritik Hata! Cycle: {current_cycle}, Loss: {loss:.4f}")
+            status_html = f"<div class='critical-alert'>🚨 {status_text} 🚨<br>IMMEDIATE ACTION REQUIRED</div>"
+        else:
+            border_color = "#00FF00" if priority == 1 else "#FFA500"
+            status_html = f"""
+            <div style="border: 2px solid {border_color}; padding: 20px; border-radius: 10px; text-align: center;">
+                <h2 style="color: {border_color}; margin:0;">SYSTEM STATUS</h2>
+                <h1 style="color: white; margin:0;">{status_text}</h1>
+                <p>Cycle: {int(current_cycle)}</p>
+            </div>
+            """
+        status_placeholder.markdown(status_html, unsafe_allow_html=True)
 
-            with ai_log:
-                st.error(f"🔴 KRİTİK EŞİK AŞILDI! [Cycle {current_cycle}]")
-                st.write(f"Limit: {threshold * 1.25:.4f} | Mevcut: {loss:.4f}")
+        # D. Grafik
+        df_chart = pd.DataFrame(history_data).tail(60)
+        chart = DashboardVisualizer.create_anomaly_chart(df_chart)
+        chart_placeholder.altair_chart(chart, use_container_width=True)
 
-                # --- YENİ: RUL Bilgisini Ekrana Bas ---
-                st.metric(label="Tahmini Kalan Ömür (RUL)", value=f"{int(predicted_rul)} Döngü", delta="-Kritik Seviye",
-                          delta_color="inverse")
+        # E. Terminal
+        log_entry = f"> Cycle {current_cycle}: Loss {loss:.4f} | Status: {status_text}"
+        terminal_logs.append(log_entry)
+        if len(terminal_logs) > 12: terminal_logs.pop(0)
+        terminal_html = "<div class='terminal-box'>" + "<br>".join(terminal_logs) + "</div>"
+        ai_terminal_placeholder.markdown(terminal_html, unsafe_allow_html=True)
 
-                st.markdown("---")
-                st.warning("⚠️ CrewAI Ajanları Göreve Çağrılıyor...")
+        # F. Heatmap
+        sensor_df = pd.DataFrame([data_packet]).drop(
+            columns=['unit_number', 'cycle', 'setting1', 'setting2', 'setting3'])
+        fig_heat = px.imshow(sensor_df, aspect="auto", color_continuous_scale="Viridis",
+                             labels=dict(x="Sensor", y="Value"))
+        fig_heat.update_layout(height=100, margin=dict(l=0, r=0, t=0, b=0), paper_bgcolor="rgba(0,0,0,0)")
+        fig_heat.update_xaxes(showticklabels=False)
+        fig_heat.update_yaxes(showticklabels=False)
+        sensor_chart_placeholder.plotly_chart(fig_heat, use_container_width=True, config=plotly_config)
 
-                with st.spinner('Analiz yapılıyor (Groq Llama-3)...'):
+        # 5. KRİTİK HATA VE AI TETİKLEME
+        if priority == 4:
+            logger.critical(f"Kritik Hata! Cycle: {current_cycle}")
+
+            terminal_logs.append(f"> 🚨 CRITICAL FAULT DETECTED!")
+            terminal_logs.append(f"> INITIATING AI AGENTS...")
+            ai_terminal_placeholder.markdown("<div class='terminal-box'>" + "<br>".join(terminal_logs) + "</div>",
+                                             unsafe_allow_html=True)
+
+            with st.spinner('🤖 AI CREW ENGAGED: ANALYZING TELEMETRY...'):
+                try:
+                    ai_crew = JetEngineCrew()
+
+                    ai_input_data = f"SENSOR TELEMETRY: {str(data_packet)}\nPREDICTED RUL: {int(predicted_rul)} CYCLES"
+                    report = ai_crew.run_mission(ai_input_data, f"{loss:.4f}")
+
+                    st.divider()
+                    st.success("✅ MISSION COMPLETE: AI DIAGNOSIS RECEIVED")
+                    st.markdown(f"""
+                    <div style="background-color: #0d1117; border: 1px solid #30363d; padding: 20px; border-radius: 10px;">
+                        {report}
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                    # METRİK RAPORU (Durdurmadan Önce)
                     try:
-                        ai_crew = JetEngineCrew()
-
-                        # --- YENİ: RUL Bilgisini AI Context'ine Ekle ---
-                        # Bu sayede Agent raporunda "Motorun 15 döngü ömrü kaldı" diyebilecek.
-                        ai_input_data = f"""
-                        SENSOR TELEMETRY: {str(data_packet)}
-                        PREDICTED REMAINING USEFUL LIFE (RUL): {int(predicted_rul)} CYCLES
-                        """
-
-                        report = ai_crew.run_mission(ai_input_data, f"{loss:.4f}")
-
-                        st.success("✅ Analiz Tamamlandı!")
-                        st.markdown(report)
-
-                        logger.info("AI Raporu oluşturuldu.")
                         recall, acc, f1, auc = evaluator.generate_report()
-                        st.info(f"📊 Session Metrics -> Recall: {recall:.2f} | F1: {f1:.2f}")
 
-                    except Exception as e:
-                        st.error(f"AI Hatası: {e}")
-                        logger.error(f"AI Hatası: {e}")
+                        col_m1, col_m2, col_m3 = st.columns(3)
+                        col_m1.metric("Final Recall", f"{recall:.2f}")
+                        col_m2.metric("Final F1", f"{f1:.2f}")
+                        col_m3.metric("Final Accuracy", f"{acc:.2f}")
 
-            time.sleep(10)
+                    except Exception as metric_err:
+                        logger.error(f"Metric Error: {metric_err}")
+                        st.warning("Not enough data to calculate AUC.")
+
+                except Exception as e:
+                    st.error(f"AI FAILURE: {e}")
+
+            time.sleep(15)
             st.stop()
 
         time.sleep(speed)

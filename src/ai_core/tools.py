@@ -6,20 +6,30 @@ class AnalysisTools:
     @tool("Calculate Rate of Change")
     def calculate_roc(current_val: float, previous_val: float, time_delta: float):
         """
-        Calculates the Rate of Change (RoC) or slope between two sensor readings.
-        Formula: (Current - Previous) / TimeDelta.
-        Useful for detecting rapid temperature spikes or pressure drops.
+        Calculates the Rate of Change (RoC) between two sensor readings.
+        Useful for detecting rapid spikes in Temperature or Pressure.
+
+        Args:
+            current_val (float): The specific value at the current cycle.
+            previous_val (float): The value at the previous cycle.
+            time_delta (float): The time difference (usually 1.0 for single cycle).
+
+        Returns:
+            str: The calculated rate or an error message.
         """
         try:
-            current_val = float(current_val)
-            previous_val = float(previous_val)
-            time_delta = float(time_delta)
+            # Gelen veriler bazen string olabilir, garantiye alalım
+            c_val = float(current_val)
+            p_val = float(previous_val)
+            t_delta = float(time_delta)
 
-            if time_delta == 0:
+            if t_delta == 0:
                 return "Error: Time delta cannot be zero."
 
-            roc = (current_val - previous_val) / time_delta
-            return f"Calculated RoC: {roc:.4f} units/cycle"
+            roc = (c_val - p_val) / t_delta
+            return f"{roc:.4f}"
+        except ValueError:
+            return "Error: Invalid numeric input provided."
         except Exception as e:
             return f"Calculation Error: {str(e)}"
 

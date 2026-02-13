@@ -58,3 +58,51 @@
 2026-02-13 16:43:17,166 - JetGuard - WARNING - CRITICAL FAILURE Anomaly detected at Cycle 95.0! Score: 0.0225
 2026-02-13 16:43:17,187 - JetGuard - CRITICAL - Kritik Hata! Cycle: 95.0, Loss: 0.0225
 2026-02-13 16:43:20,674 - JetGuard - INFO - AI Raporu oluşturuldu.
+2026-02-13 16:51:24,208 - JetGuard - INFO - Visual Simulation Started.
+2026-02-13 16:51:24,250 - JetGuard - INFO - Orchestrator başlatılıyor...
+2026-02-13 16:51:28,970 - JetGuard - WARNING - WARNING Anomaly detected at Cycle 52.0! Score: 0.0190
+2026-02-13 16:51:29,561 - JetGuard - WARNING - WARNING Anomaly detected at Cycle 59.0! Score: 0.0181
+2026-02-13 16:51:30,976 - JetGuard - WARNING - WARNING Anomaly detected at Cycle 74.0! Score: 0.0173
+2026-02-13 16:51:32,757 - JetGuard - WARNING - CRITICAL FAILURE Anomaly detected at Cycle 95.0! Score: 0.0225
+2026-02-13 16:51:32,808 - JetGuard - CRITICAL - Kritik Hata! Cycle: 95.0
+2026-02-13 16:55:18,441 - JetGuard - INFO - Visual Simulation Started.
+2026-02-13 16:55:18,485 - JetGuard - INFO - Orchestrator başlatılıyor...
+2026-02-13 16:55:24,674 - JetGuard - WARNING - WARNING Anomaly detected at Cycle 52.0! Score: 0.0190
+2026-02-13 16:55:25,479 - JetGuard - WARNING - WARNING Anomaly detected at Cycle 59.0! Score: 0.0181
+2026-02-13 16:55:27,195 - JetGuard - WARNING - WARNING Anomaly detected at Cycle 74.0! Score: 0.0173
+2026-02-13 16:55:29,634 - JetGuard - WARNING - CRITICAL FAILURE Anomaly detected at Cycle 95.0! Score: 0.0225
+2026-02-13 16:55:29,682 - JetGuard - CRITICAL - Kritik Hata! Cycle: 95.0
+2026-02-13 17:00:57,450 - JetGuard - INFO - Visual Simulation Started.
+2026-02-13 17:00:57,494 - JetGuard - INFO - Orchestrator başlatılıyor...
+2026-02-13 17:01:03,729 - JetGuard - WARNING - WARNING Anomaly detected at Cycle 52.0! Score: 0.0190
+2026-02-13 17:01:04,560 - JetGuard - WARNING - WARNING Anomaly detected at Cycle 59.0! Score: 0.0181
+2026-02-13 17:01:06,345 - JetGuard - WARNING - WARNING Anomaly detected at Cycle 74.0! Score: 0.0173
+2026-02-13 17:01:08,817 - JetGuard - WARNING - CRITICAL FAILURE Anomaly detected at Cycle 95.0! Score: 0.0225
+2026-02-13 17:01:08,866 - JetGuard - CRITICAL - Kritik Hata! Cycle: 95.0
+2026-02-13 17:08:15,464 - JetGuard - INFO - Visual Simulation Started.
+2026-02-13 17:08:15,505 - JetGuard - INFO - Orchestrator başlatılıyor...
+2026-02-13 17:08:21,690 - JetGuard - WARNING - WARNING Anomaly detected at Cycle 52.0! Score: 0.0190
+2026-02-13 17:08:22,493 - JetGuard - WARNING - WARNING Anomaly detected at Cycle 59.0! Score: 0.0181
+2026-02-13 17:08:24,275 - JetGuard - WARNING - WARNING Anomaly detected at Cycle 74.0! Score: 0.0173
+2026-02-13 17:08:27,025 - JetGuard - WARNING - CRITICAL FAILURE Anomaly detected at Cycle 95.0! Score: 0.0225
+2026-02-13 17:08:27,075 - JetGuard - CRITICAL - Kritik Hata! Cycle: 95.0
+2026-02-13 17:08:38,648 - JetGuard - WARNING - Metric calculation skipped for this frame: Found empty input array (e.g., `y_true` or `y_pred`) while a minimum of 1 sample is required.
+2026-02-13 17:11:11,693 - JetGuard - INFO - Visual Simulation Started.
+2026-02-13 17:11:11,739 - JetGuard - INFO - Orchestrator başlatılıyor...
+2026-02-13 17:11:15,880 - JetGuard - WARNING - WARNING Anomaly detected at Cycle 52.0! Score: 0.0190
+2026-02-13 17:11:16,450 - JetGuard - WARNING - WARNING Anomaly detected at Cycle 59.0! Score: 0.0181
+2026-02-13 17:11:17,579 - JetGuard - WARNING - WARNING Anomaly detected at Cycle 74.0! Score: 0.0173
+2026-02-13 17:11:19,165 - JetGuard - WARNING - CRITICAL FAILURE Anomaly detected at Cycle 95.0! Score: 0.0225
+2026-02-13 17:11:19,214 - JetGuard - CRITICAL - Kritik Hata! Cycle: 95.0
+2026-02-13 17:11:29,055 - JetGuard - INFO - AUC Score: nan
+2026-02-13 17:11:54,882 - JetGuard - INFO - Visual Simulation Started.
+2026-02-13 17:11:54,912 - JetGuard - INFO - Orchestrator başlatılıyor...
+2026-02-13 17:12:05,080 - JetGuard - INFO - Visual Simulation Started.
+2026-02-13 17:12:05,120 - JetGuard - INFO - Orchestrator başlatılıyor...
+2026-02-13 17:13:17,305 - JetGuard - INFO - Visual Simulation Started.
+2026-02-13 17:13:17,353 - JetGuard - INFO - Orchestrator başlatılıyor...
+2026-02-13 17:13:26,203 - JetGuard - WARNING - WARNING Anomaly detected at Cycle 52.0! Score: 0.0190
+2026-02-13 17:13:27,355 - JetGuard - WARNING - WARNING Anomaly detected at Cycle 59.0! Score: 0.0181
+2026-02-13 17:13:29,845 - JetGuard - WARNING - WARNING Anomaly detected at Cycle 74.0! Score: 0.0173
+2026-02-13 17:13:33,312 - JetGuard - WARNING - CRITICAL FAILURE Anomaly detected at Cycle 95.0! Score: 0.0225
+2026-02-13 17:13:33,360 - JetGuard - CRITICAL - Kritik Hata! Cycle: 95.0

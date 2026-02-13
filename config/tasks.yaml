@@ -6,26 +6,33 @@ diagnosis_task:
     - Statistical Anomaly Score (MSE): {loss_score} (Threshold exceeded!)
     - Real-time Telemetry Snapshot: {sensor_data}
     
-    Your mission is to perform a Root Cause Analysis (RCA):
-    1. Identify specifically which sensors are deviating from nominal ranges.
-    2. Analyze the correlation between deviating sensors (e.g., T24 vs W24).
-    3. Determine the physical failure mode (e.g., High Pressure Compressor Stall, Turbine Blade Creep, Bearing Failure).
-    4. Assess the severity of the failure based on the deviation magnitude.
+    Your mission is to perform a Comprehensive Root Cause Analysis (RCA):
+    1. **Data Forensics:** Identify specifically which sensors are deviating. Use your calculation tools to quantify the deviation magnitude.
+    2. **Correlation Analysis:** Analyze the correlation between deviating sensors (e.g., How does T24 affect W24?). Explain the thermodynamic link.
+    3. **Failure Mode Determination:** Determine the specific physical failure mode (e.g., High Pressure Compressor Stall, Turbine Blade Creep, Bearing Failure) with high confidence.
+    4. **Severity Assessment:** Assess the immediate risk to the aircraft based on the RUL and Deviation.
+    
+    **Constraint:** Your report must be detailed, technical, and at least 3 paragraphs long.
   expected_output: >
-    A structured technical report containing:
-    - [Violating Sensors]: List of specific sensors with abnormal readings.
-    - [Failure Mode]: The specific mechanical/thermal issue identified.
-    - [Technical Reasoning]: A concise explanation of why this failure occurred based on the data.
+    A structured, detailed Technical Analysis Report containing:
+    - [Violating Sensors & Metrics]: Detailed list with calculated deviations.
+    - [Thermodynamic Analysis]: Explanation of the engine cycle disruption.
+    - [Definitive Root Cause]: The specific mechanical/thermal issue identified.
+    - [Risk Assessment]: Quantitative assessment of the failure severity.
 
 action_plan_task:
   description: >
     Review the Technical Diagnosis Report provided by the Senior Engineer.
-    Based on the identified failure mode, generate a critical response plan.
+    Based on the identified failure mode, generate a comprehensive Critical Response Protocol.
     
     You must provide:
-    1. IN-FLIGHT EMERGENCY ACTIONS: Immediate steps for the pilot (e.g., Idle Throttle, Engage Fire Suppression).
-    2. GROUND MAINTENANCE ORDERS: Specific repair actions for the hangar crew (e.g., Borescope inspection of Stage 4, Replace Fuel Nozzle).
+    1. **IN-FLIGHT EMERGENCY ACTIONS (QRH):** Detailed steps for the pilot. Explain exactly what switch to flip and why (e.g., "Retard Throttle to IDLE to lower T4 temperatures").
+    2. **GROUND MAINTENANCE ORDERS (AMM):** Specific repair actions for the hangar crew. Include part names, inspection methods (Borescope, NDT), and safety warnings.
+    3. **POST-INCIDENT PROCEDURE:** What logs need to be pulled and where the engine should be sent.
+    
+    **Constraint:** Use imperative military-style language but provide detailed context for every order.
   expected_output: >
-    A strictly formatted SAFETY & ACTION REPORT:
-    - **EMERGENCY PROTOCOL**: 3 clear, imperative commands for immediate execution.
-    - **MAINTENANCE TICKET**: The required inspection or replacement procedure.
+    A strictly formatted, detailed SAFETY & ACTION DOSSIER:
+    - **EMERGENCY FLIGHT PROTOCOL**: Step-by-step pilot instructions with rationale.
+    - **GROUND MAINTENANCE TICKET**: Detailed work order for the engineering team including tooling required.
+    - **SAFETY WARNINGS**: Critical hazards to personnel (e.g., High Pressure, Heat).

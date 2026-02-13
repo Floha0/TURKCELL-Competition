@@ -7,3 +7,4 @@ openai
 seaborn
 streamlit
 groq
+plotly
