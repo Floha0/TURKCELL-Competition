@@ -3,6 +3,8 @@ import pandas as pd
 #import time
 import json
 
+# This class simulates the streaming of sensor data for a specific engine from the NASA train dataset.
+
 class SensorStreamer:
     def __init__(self, engine_id=1):
         # NASA train data column names
