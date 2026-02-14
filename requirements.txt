@@ -1,10 +1,21 @@
+# --- Temel Veri ve Matematik ---
 pandas
 numpy
 scikit-learn
-matplotlib
-python-dotenv
-openai
-seaborn
+joblib
+
+# --- Görselleştirme ve Dashboard ---
 streamlit
-groq
 plotly
+matplotlib
+seaborn
+
+# --- Yapay Zeka ve Ajanlar ---
+crewai
+langchain
+langchain-groq
+groq
+
+# --- Yardımcı Araçlar ---
+python-dotenv
+pyyaml              # agents.yaml okumak için
