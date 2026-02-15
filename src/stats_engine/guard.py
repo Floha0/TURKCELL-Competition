@@ -81,7 +81,7 @@ class StatsGuard:
         logger.info("StatsGuard: EWMA memory reset.")
 
     def score(self, data_packet: dict) -> dict:
-        # 0. MODEL HAZIRLIK KONTROLÜ (Sahne kurtaran fail-safe)
+        # 0. MODEL HAZIRLIK KONTROLÜ
         if not self.ready:
             return {"ok": False, "reason": "MODEL_NOT_READY"}
 
