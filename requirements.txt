@@ -1,19 +1,21 @@
-# Veri İşleme ve Analiz
+# Veri Analizi ve Manipülasyon
 pandas
 numpy
 
-# Makine Öğrenmesi
+# Makine Öğrenmesi ve Model Yönetimi
 scikit-learn
 joblib
 
-# Görselleştirme
+# Yapay Zeka ve Agent Yapıları (CrewAI & LangChain)
+crewai
+langchain-groq
+
+# Web Arayüzü ve Görselleştirme
+streamlit
 plotly
+altair
 matplotlib
 seaborn
-altair
-
-# Web Arayüzü
-streamlit
 
 # Yapılandırma ve Yardımcı Araçlar
 python-dotenv
