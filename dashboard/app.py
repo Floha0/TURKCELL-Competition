@@ -36,6 +36,13 @@ st.set_page_config(
 # --- METRİK HAFIZASI ---
 if 'final_metrics' not in st.session_state:
     st.session_state.final_metrics = None
+
+if "first_alert_cycle" not in st.session_state:
+    st.session_state.first_alert_cycle = None
+
+if "fail_cycle" not in st.session_state:
+    st.session_state.fail_cycle = None
+
 # --- SESSION STATE (Hafıza Yönetimi) ---
 if 'ai_report_ready' not in st.session_state:
     if 'last_heatmap' not in st.session_state:
@@ -55,7 +62,8 @@ st.markdown("""
 
 
 # --- YARDIMCI FONKSİYONLAR ---
-def create_gauge(value, title, min_val, max_val, color="green", threshold=None):
+def create_gauge(value, title, min_val, max_val, color="green",
+                 threshold=None):
     """Plotly Gauge - Optimize Edilmiş"""
 
     tick_step = (max_val - min_val) / 4
@@ -93,7 +101,8 @@ def create_gauge(value, title, min_val, max_val, color="green", threshold=None):
 
 # --- BAŞLIK ---
 col_logo, col_title = st.columns([1, 6])
-with col_logo: st.image("https://cdn-icons-png.flaticon.com/512/900/900967.png", width=80)
+with col_logo: st.image(
+    "https://cdn-icons-png.flaticon.com/512/900/900967.png", width=80)
 with col_title:
     st.title("JETGUARD // AI DEFENSE SYSTEM")
     st.caption("MISSION CONTROL: LIVE TELEMETRY & PREDICTIVE MAINTENANCE")
@@ -106,7 +115,8 @@ with st.sidebar:
     engine_id = st.number_input("Target Engine Unit", 1, 100, 1)
     # TİTREME ÇÖZÜMÜ 1: Varsayılan hızı 0.1'e çektik (Daha kararlı)
     speed = st.slider("Simulation Clock (sec)", 0.01, 1.0, 0.1)
-    start_btn = st.button("INITIATE SEQUENCE", type="primary", use_container_width=True)
+    start_btn = st.button("INITIATE SEQUENCE", type="primary",
+                          use_container_width=True)
     st.info("System Ready...")
 
 # --- YERLEŞİM ---
@@ -127,15 +137,20 @@ sensor_chart_placeholder = st.empty()
 if start_btn:
     st.session_state.ai_report_ready = False
     st.session_state.final_metrics = None
+    st.session_state.first_alert_cycle = None
+    st.session_state.fail_cycle = None
+
     logger.info("Visual Simulation Started.")
 
     streamer = SensorStreamer(engine_id=engine_id)
     orchestrator = Orchestrator()
     guard = DataGuard()
-    evaluator = PerformanceEvaluator()
+    evaluator = PerformanceEvaluator(fail_window=10)
 
     history_data = {'Cycle': [], 'Anomaly Score': [], 'Threshold': []}
-    terminal_logs = ["System Initialized...", "Connecting to Satellite Stream...", "Data Link Established."]
+    terminal_logs = ["System Initialized...",
+                     "Connecting to Satellite Stream...",
+                     "Data Link Established."]
 
     # TİTREME ÇÖZÜMÜ 2: Plotly Config (Statik Plot)
     plotly_config = {'staticPlot': True, 'displayModeBar': False}
@@ -155,25 +170,50 @@ if start_btn:
         history_data['Anomaly Score'].append(spe)
         history_data['Threshold'].append(threshold)
 
-        # RECALL DÜZELTME: Ground Truth eşiğini 130'dan 90'a çektik.
-        # Artık 90'dan sonra gelen her uyarı "DOĞRU BİLİNMİŞ" sayılacak.
-        simulated_ground_truth = 1 if current_cycle > 90 else 0
+        # --- DİNAMİK GROUND TRUTH (Failure Window) ---
+        # Streamer/engine dataset'in gerçek fail_cycle değeri yoksa, MVP için "fail" anını ilk prio=4 gördüğümüz cycle kabul ediyoruz.
+        if "fail_cycle" not in st.session_state:
+            st.session_state.fail_cycle = None
+
+        if priority == 4 and st.session_state.fail_cycle is None:
+            st.session_state.fail_cycle = int(current_cycle)
+
+        FAILURE_WINDOW = 30  # son 30 cycle = risk bölgesi (20-30 arası da seçebilirsin)
+
+        if st.session_state.fail_cycle is not None:
+            simulated_ground_truth = 1 if current_cycle >= (
+                    st.session_state.fail_cycle - FAILURE_WINDOW) else 0
+        else:
+            simulated_ground_truth = 0  # fail henüz oluşmadıysa, ground truth "normal" kabul
+
+        # Tahmin sınıfı: monitoring ve üstü = alarm
         predicted_class = 1 if priority >= 2 else 0
-        evaluator.add_record(simulated_ground_truth, predicted_class, probability=decision.get('risk_score', 0.0))
+
+        # İlk alarm cycle'ını yakala (ilk kez 1 olduğu an)
+        if predicted_class == 1 and st.session_state.first_alert_cycle is None:
+            st.session_state.first_alert_cycle = int(current_cycle)
+
+        # Olasılık/puan olarak risk_score daha doğru (0-1)
+        evaluator.add_record(simulated_ground_truth, predicted_class,
+                             probability=float(
+                                 decision.get("risk_score", 0.0)))
 
         # --- GÖRSEL GÜNCELLEME ---
-
         # A. RUL Gauge
         rul_color = "#00FF00" if predicted_rul > 50 else "#FFA500" if predicted_rul > 20 else "#FF0000"
-        fig_rul = create_gauge(predicted_rul, "Est. RUL (Cycles)", 0, 200, rul_color, threshold=20)
+        fig_rul = create_gauge(predicted_rul, "Est. RUL (Cycles)", 0, 200,
+                               rul_color, threshold=20)
         # config parametresi eklendi
-        rul_placeholder.plotly_chart(fig_rul, use_container_width=True, config=plotly_config)
+        rul_placeholder.plotly_chart(fig_rul, use_container_width=True,
+                                     config=plotly_config)
 
         # B. Anomaly Gauge
         loss_color = "#00FF00" if priority == 1 else "#FFA500" if priority == 2 else "#FF0000"
-        fig_loss = create_gauge(spe, "Anomaly Score", 0, threshold * 3, loss_color, threshold=threshold)
+        fig_loss = create_gauge(spe, "Anomaly Score", 0, threshold * 3,
+                                loss_color, threshold=threshold)
         # config parametresi eklendi
-        loss_placeholder.plotly_chart(fig_loss, use_container_width=True, config=plotly_config)
+        loss_placeholder.plotly_chart(fig_loss, use_container_width=True,
+                                      config=plotly_config)
 
         # C. Status
         status_text = decision['status']
@@ -199,7 +239,8 @@ if start_btn:
         log_entry = f"> Cycle {current_cycle}: Loss {spe:.4f} | Status: {status_text}"
         terminal_logs.append(log_entry)
         if len(terminal_logs) > 12: terminal_logs.pop(0)
-        terminal_html = "<div class='terminal-box'>" + "<br>".join(terminal_logs) + "</div>"
+        terminal_html = "<div class='terminal-box'>" + "<br>".join(
+            terminal_logs) + "</div>"
         ai_terminal_placeholder.markdown(terminal_html, unsafe_allow_html=True)
 
         # F. Heatmap (GÜNCELLENDİ)
@@ -214,17 +255,24 @@ if start_btn:
             zmin=sensor_df.min().min(),  # Renk skalasını sabitlemek için
             zmax=sensor_df.max().max()
         )
-        fig_heat.update_layout(height=100, margin=dict(l=0, r=0, t=0, b=0), paper_bgcolor="rgba(0,0,0,0)")
+        fig_heat.update_layout(height=100, margin=dict(l=0, r=0, t=0, b=0),
+                               paper_bgcolor="rgba(0,0,0,0)")
         fig_heat.update_xaxes(showticklabels=False)
         fig_heat.update_yaxes(showticklabels=False)
 
         # Hafızaya kaydet ve çiz
         st.session_state.last_heatmap = fig_heat
-        sensor_chart_placeholder.plotly_chart(fig_heat, use_container_width=True, config=plotly_config)
+        sensor_chart_placeholder.plotly_chart(fig_heat,
+                                              use_container_width=True,
+                                              config=plotly_config)
 
         # 5. KRİTİK HATA VE AI TETİKLEME
         if priority == 4:
             logger.critical(f"Kritik Hata! Cycle: {current_cycle}")
+            try:
+                evaluator.set_fail_cycle(int(current_cycle))
+            except Exception as e:
+                logger.error(f"Evaluator fail_cycle set edilemedi: {e}")
 
             # AI Raporu oluşturulmadıysa oluştur
             if not st.session_state.ai_report_ready:
@@ -232,10 +280,12 @@ if start_btn:
                     try:
                         ai_crew = JetEngineCrew()
                         ai_input_data = f"SENSOR TELEMETRY: {str(data_packet)}\nPREDICTED RUL: {int(predicted_rul)} CYCLES"
-                        report = ai_crew.run_mission(ai_input_data, f"{spe:.4f}")
+                        report = ai_crew.run_mission(ai_input_data,
+                                                     f"{spe:.4f}")
 
                         # Raporu ve Metni Hafızaya Kaydet
-                        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        timestamp = datetime.now().strftime(
+                            "%Y-%m-%d %H:%M:%S")
                         st.session_state.report_content = f"""
         =======================================================
         🚀 JETGUARD DEFENSE SYSTEM - FAILURE DOSSIER
@@ -269,21 +319,42 @@ if start_btn:
             # --- METRİKLERİ HESAPLA VE HAFIZAYA AL ---
             if st.session_state.final_metrics is None:
                 try:
-                    recall, acc, f1, auc = evaluator.generate_report()
-                    st.session_state.final_metrics = {"rec": recall, "f1": f1, "acc": acc}
+                    recall, acc, f1, auc, lead_time, far_100 = evaluator.generate_report()
+                    st.session_state.final_metrics = {
+                        "rec": recall,
+                        "f1": f1,
+                        "acc": acc,
+                        "lead_time": lead_time,
+                        "far_100": far_100
+                    }
                 except:
-                    st.session_state.final_metrics = {"rec": 0.0, "f1": 0.0, "acc": 0.0}
+                    st.session_state.final_metrics = {"rec": 0.0, "f1": 0.0,
+                                                      "acc": 0.0}
 
             # --- METRİKLERİ EKRANA BAS ---
-            m1, m2, m3 = st.columns(3)
-            m1.metric("Final Recall", f"{st.session_state.final_metrics['rec']:.2f}")
-            m2.metric("Final F1 Score", f"{st.session_state.final_metrics['f1']:.2f}")
-            m3.metric("Final Accuracy", f"{st.session_state.final_metrics['acc']:.2f}")
+            lead_time_ui = None
+            if st.session_state.fail_cycle is not None and st.session_state.first_alert_cycle is not None:
+                lead_time_ui = st.session_state.fail_cycle - st.session_state.first_alert_cycle
+
+            m1, m2, m3, m4 = st.columns(4)
+
+            m1.metric("Final Recall",
+                      f"{st.session_state.final_metrics['rec']:.2f}")
+            m2.metric("Final F1 Score",
+                      f"{st.session_state.final_metrics['f1']:.2f}")
+
+            lead = st.session_state.final_metrics.get("lead_time", None)
+            m3.metric("Lead Time (cycle)", "N/A" if lead_time_ui is None else f"{int(lead_time_ui)}")
+
+            m4.metric("False Alarm /100",
+                      f"{st.session_state.final_metrics.get('far_100', 0.0):.2f}")
 
             # --- HEATMAP'İ FİNALDE DE GÖSTER ---
             if st.session_state.last_heatmap:
                 st.subheader("📡 FINAL SENSOR ARRAY SNAPSHOT")
-                st.plotly_chart(st.session_state.last_heatmap, use_container_width=True, config={'staticPlot': True})
+                st.plotly_chart(st.session_state.last_heatmap,
+                                use_container_width=True,
+                                config={'staticPlot': True})
 
             st.markdown(f"""
                     <div style="background-color: #0d1117; border: 1px solid #30363d; padding: 20px; border-radius: 10px;">
@@ -300,7 +371,8 @@ if start_btn:
             )
 
             # Simülasyonu burada kilitliyoruz ama butonu öldürmüyoruz
-            st.warning("⚠️ SIMULATION HALTED DUE TO CRITICAL FAILURE. REPORT IS READY FOR DOWNLOAD.")
+            st.warning(
+                "⚠️ SIMULATION HALTED DUE TO CRITICAL FAILURE. REPORT IS READY FOR DOWNLOAD.")
             st.stop()  # Bu sefer düzgün çalışacak çünkü data önceden hafızaya alındı.
 
         time.sleep(speed)
