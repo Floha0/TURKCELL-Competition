@@ -65,14 +65,19 @@ class PerformanceEvaluator:
             if pred == 1:
                 self.total_triggers += 1
 
-                if self.first_warning_cycle is None:
-                    self.first_warning_cycle = c
+                # Yeni alarm olayı mı?
+                is_new_event = (len(self.y_pred) < 2) or (self.y_pred[-2] == 0)
 
-                # fail_cycle set ise: failure window DIŞINDA alarm = false alarm
-                if self.fail_cycle is not None:
-                    in_failure_window = c >= (self.fail_cycle - self.fail_window)
-                    if not in_failure_window:
-                        self.false_alarm_count += 1
+                if is_new_event:
+                    if self.first_warning_cycle is None:
+                        self.first_warning_cycle = c
+
+                    if self.fail_cycle is not None:
+                        start = self.fail_cycle - self.fail_window
+
+                        # Failure window'dan çok önceyse = False Alarm Event
+                        if c < start:
+                            self.false_alarm_count += 1
 
     # --- Watchdog metrik yardımcıları ---
     def calculate_lead_time(self):

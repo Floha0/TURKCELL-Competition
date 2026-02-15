@@ -145,7 +145,7 @@ if start_btn:
     streamer = SensorStreamer(engine_id=engine_id)
     orchestrator = Orchestrator()
     guard = DataGuard()
-    evaluator = PerformanceEvaluator(fail_window=10)
+    evaluator = PerformanceEvaluator(fail_window=30)
 
     history_data = {'Cycle': [], 'Anomaly Score': [], 'Threshold': []}
     terminal_logs = ["System Initialized...",
@@ -194,9 +194,12 @@ if start_btn:
             st.session_state.first_alert_cycle = int(current_cycle)
 
         # Olasılık/puan olarak risk_score daha doğru (0-1)
-        evaluator.add_record(simulated_ground_truth, predicted_class,
-                             probability=float(
-                                 decision.get("risk_score", 0.0)))
+        evaluator.add_record(
+            simulated_ground_truth,
+            predicted_class,
+            probability=float(decision.get("risk_score", 0.0)),
+            cycle=int(current_cycle)
+        )
 
         # --- GÖRSEL GÜNCELLEME ---
         # A. RUL Gauge
@@ -336,17 +339,16 @@ if start_btn:
             if st.session_state.fail_cycle is not None and st.session_state.first_alert_cycle is not None:
                 lead_time_ui = st.session_state.fail_cycle - st.session_state.first_alert_cycle
 
-            m1, m2, m3, m4 = st.columns(4)
+            m1, m2, m3 = st.columns(3)
 
-            m1.metric("Final Recall",
+            m1.metric("Final Recall (Safety)",
                       f"{st.session_state.final_metrics['rec']:.2f}")
-            m2.metric("Final F1 Score",
-                      f"{st.session_state.final_metrics['f1']:.2f}")
 
             lead = st.session_state.final_metrics.get("lead_time", None)
-            m3.metric("Lead Time (cycle)", "N/A" if lead_time_ui is None else f"{int(lead_time_ui)}")
+            m2.metric("Lead Time (cycles)",
+                      "N/A" if lead_time_ui is None else f"{int(lead_time_ui)}")
 
-            m4.metric("False Alarm /100",
+            m3.metric("False Alarm /100",
                       f"{st.session_state.final_metrics.get('far_100', 0.0):.2f}")
 
             # --- HEATMAP'İ FİNALDE DE GÖSTER ---
