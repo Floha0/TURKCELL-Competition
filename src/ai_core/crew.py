@@ -7,7 +7,7 @@ from pathlib import Path
 ROOT_DIR = Path(__file__).resolve().parent.parent.parent
 sys.path.append(str(ROOT_DIR))
 
-dotenv.load_dotenv(ROOT_DIR / '.env')
+dotenv.load_dotenv(ROOT_DIR / '.env.local')
 groq_key = os.getenv("GROQ_API_KEY")
 
 if not groq_key or groq_key == "":

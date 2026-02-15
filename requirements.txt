@@ -1,21 +1,20 @@
-# --- Temel Veri ve Matematik ---
+# Veri İşleme ve Analiz
 pandas
 numpy
+
+# Makine Öğrenmesi
 scikit-learn
 joblib
 
-# --- Görselleştirme ve Dashboard ---
-streamlit
+# Görselleştirme
 plotly
 matplotlib
 seaborn
+altair
 
-# --- Yapay Zeka ve Ajanlar ---
-crewai
-langchain
-langchain-groq
-groq
+# Web Arayüzü
+streamlit
 
-# --- Yardımcı Araçlar ---
+# Yapılandırma ve Yardımcı Araçlar
 python-dotenv
-pyyaml              # agents.yaml okumak için
+pyyaml

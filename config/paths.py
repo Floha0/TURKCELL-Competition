@@ -1,5 +1,4 @@
 from pathlib import Path
-import os
 import json
 
 # Project root directory

@@ -218,3 +218,56 @@
 2026-02-14 13:44:42,444 - JetGuard - WARNING - WARNING Anomaly detected at Cycle 42.0! Score: 0.0187
 2026-02-14 13:44:45,796 - JetGuard - WARNING - CRITICAL FAILURE Anomaly detected at Cycle 59.0! Score: 0.0259
 2026-02-14 13:44:45,853 - JetGuard - CRITICAL - Kritik Hata! Cycle: 59.0
+2026-02-15 16:20:25,510 - JetGuard - INFO - Visual Simulation Started.
+2026-02-15 16:20:25,545 - JetGuard - INFO - Orchestrator başlatılıyor...
+2026-02-15 16:20:25,588 - JetGuard - INFO - StatsGuard: Model and Scaler loaded successfully.
+2026-02-15 16:20:25,717 - JetGuard - INFO - ✅ RUL Tahmin Modeli Yüklendi.
+2026-02-15 16:20:52,804 - JetGuard - WARNING - LOW RUL WARNING | Cycle 173.0 | Risk: 0.004 | Ratio: 0.41 | RUL: 19.4
+2026-02-15 16:20:53,112 - JetGuard - WARNING - LOW RUL WARNING | Cycle 175.0 | Risk: 0.009 | Ratio: 0.40 | RUL: 18.5
+2026-02-15 16:20:53,417 - JetGuard - WARNING - LOW RUL WARNING | Cycle 177.0 | Risk: 0.006 | Ratio: 0.30 | RUL: 16.1
+2026-02-15 16:20:53,571 - JetGuard - WARNING - LOW RUL WARNING | Cycle 178.0 | Risk: 0.006 | Ratio: 0.45 | RUL: 16.4
+2026-02-15 16:20:53,727 - JetGuard - WARNING - LOW RUL WARNING | Cycle 179.0 | Risk: 0.011 | Ratio: 0.82 | RUL: 15.0
+2026-02-15 16:20:53,882 - JetGuard - WARNING - LOW RUL WARNING | Cycle 180.0 | Risk: 0.038 | Ratio: 1.18 | RUL: 18.9
+2026-02-15 16:20:54,036 - JetGuard - WARNING - LOW RUL WARNING | Cycle 181.0 | Risk: 0.037 | Ratio: 0.67 | RUL: 14.5
+2026-02-15 16:20:54,190 - JetGuard - WARNING - LOW RUL WARNING | Cycle 182.0 | Risk: 0.044 | Ratio: 0.76 | RUL: 11.3
+2026-02-15 16:20:54,343 - JetGuard - WARNING - LOW RUL WARNING | Cycle 183.0 | Risk: 0.018 | Ratio: 0.24 | RUL: 12.1
+2026-02-15 16:20:54,497 - JetGuard - CRITICAL - RUL Tükendi (5.0). AI Crew göreve çağrılıyor!
+2026-02-15 16:20:54,497 - JetGuard - CRITICAL - CRITICAL FAILURE | Cycle 184.0 | Risk: 0.016 | Ratio: 0.53 | RUL: 5.0
+2026-02-15 16:20:54,536 - JetGuard - CRITICAL - Kritik Hata! Cycle: 184.0
+2026-02-15 16:21:26,630 - JetGuard - INFO - Visual Simulation Started.
+2026-02-15 16:21:26,664 - JetGuard - INFO - Orchestrator başlatılıyor...
+2026-02-15 16:21:26,665 - JetGuard - INFO - StatsGuard: Model and Scaler loaded successfully.
+2026-02-15 16:21:26,743 - JetGuard - INFO - ✅ RUL Tahmin Modeli Yüklendi.
+2026-02-15 16:21:53,470 - JetGuard - WARNING - LOW RUL WARNING | Cycle 173.0 | Risk: 0.004 | Ratio: 0.41 | RUL: 19.4
+2026-02-15 16:21:53,780 - JetGuard - WARNING - LOW RUL WARNING | Cycle 175.0 | Risk: 0.009 | Ratio: 0.40 | RUL: 18.5
+2026-02-15 16:21:54,089 - JetGuard - WARNING - LOW RUL WARNING | Cycle 177.0 | Risk: 0.006 | Ratio: 0.30 | RUL: 16.1
+2026-02-15 16:21:54,245 - JetGuard - WARNING - LOW RUL WARNING | Cycle 178.0 | Risk: 0.006 | Ratio: 0.45 | RUL: 16.4
+2026-02-15 16:21:54,403 - JetGuard - WARNING - LOW RUL WARNING | Cycle 179.0 | Risk: 0.011 | Ratio: 0.82 | RUL: 15.0
+2026-02-15 16:21:54,558 - JetGuard - WARNING - LOW RUL WARNING | Cycle 180.0 | Risk: 0.038 | Ratio: 1.18 | RUL: 18.9
+2026-02-15 16:21:54,715 - JetGuard - WARNING - LOW RUL WARNING | Cycle 181.0 | Risk: 0.037 | Ratio: 0.67 | RUL: 14.5
+2026-02-15 16:21:54,872 - JetGuard - WARNING - LOW RUL WARNING | Cycle 182.0 | Risk: 0.044 | Ratio: 0.76 | RUL: 11.3
+2026-02-15 16:21:55,032 - JetGuard - WARNING - LOW RUL WARNING | Cycle 183.0 | Risk: 0.018 | Ratio: 0.24 | RUL: 12.1
+2026-02-15 16:21:55,446 - JetGuard - CRITICAL - RUL Tükendi (5.0). AI Crew göreve çağrılıyor!
+2026-02-15 16:21:55,447 - JetGuard - CRITICAL - CRITICAL FAILURE | Cycle 184.0 | Risk: 0.016 | Ratio: 0.53 | RUL: 5.0
+2026-02-15 16:21:55,484 - JetGuard - CRITICAL - Kritik Hata! Cycle: 184.0
+2026-02-15 16:22:12,285 - JetGuard - INFO - Visual Simulation Started.
+2026-02-15 16:22:12,318 - JetGuard - INFO - Orchestrator başlatılıyor...
+2026-02-15 16:22:12,319 - JetGuard - INFO - StatsGuard: Model and Scaler loaded successfully.
+2026-02-15 16:22:12,394 - JetGuard - INFO - ✅ RUL Tahmin Modeli Yüklendi.
+2026-02-15 16:22:54,303 - JetGuard - WARNING - LOW RUL WARNING | Cycle 269.0 | Risk: 0.086 | Ratio: 1.17 | RUL: 16.8
+2026-02-15 16:22:54,458 - JetGuard - WARNING - LOW RUL WARNING | Cycle 270.0 | Risk: 0.049 | Ratio: 0.46 | RUL: 14.8
+2026-02-15 16:22:54,613 - JetGuard - WARNING - LOW RUL WARNING | Cycle 271.0 | Risk: 0.028 | Ratio: 0.41 | RUL: 11.9
+2026-02-15 16:22:54,768 - JetGuard - WARNING - LOW RUL WARNING | Cycle 272.0 | Risk: 0.017 | Ratio: 0.39 | RUL: 17.8
+2026-02-15 16:22:54,921 - JetGuard - WARNING - LOW RUL WARNING | Cycle 273.0 | Risk: 0.018 | Ratio: 0.61 | RUL: 18.7
+2026-02-15 16:22:55,074 - JetGuard - WARNING - LOW RUL WARNING | Cycle 274.0 | Risk: 0.024 | Ratio: 0.75 | RUL: 10.8
+2026-02-15 16:22:55,227 - JetGuard - WARNING - LOW RUL WARNING | Cycle 275.0 | Risk: 0.021 | Ratio: 0.55 | RUL: 13.3
+2026-02-15 16:22:55,382 - JetGuard - WARNING - LOW RUL WARNING | Cycle 276.0 | Risk: 0.011 | Ratio: 0.30 | RUL: 9.6
+2026-02-15 16:22:55,540 - JetGuard - WARNING - LOW RUL WARNING | Cycle 277.0 | Risk: 0.016 | Ratio: 0.73 | RUL: 11.5
+2026-02-15 16:22:55,694 - JetGuard - WARNING - LOW RUL WARNING | Cycle 278.0 | Risk: 0.014 | Ratio: 0.52 | RUL: 9.2
+2026-02-15 16:22:55,846 - JetGuard - WARNING - LOW RUL WARNING | Cycle 279.0 | Risk: 0.027 | Ratio: 0.91 | RUL: 5.9
+2026-02-15 16:22:56,001 - JetGuard - WARNING - LOW RUL WARNING | Cycle 280.0 | Risk: 0.040 | Ratio: 0.85 | RUL: 9.7
+2026-02-15 16:22:56,155 - JetGuard - WARNING - LOW RUL WARNING | Cycle 281.0 | Risk: 0.048 | Ratio: 0.77 | RUL: 5.6
+2026-02-15 16:22:56,311 - JetGuard - WARNING - LOW RUL WARNING | Cycle 282.0 | Risk: 0.037 | Ratio: 0.56 | RUL: 5.6
+2026-02-15 16:22:56,465 - JetGuard - CRITICAL - RUL Tükendi (3.8). AI Crew göreve çağrılıyor!
+2026-02-15 16:22:56,465 - JetGuard - CRITICAL - CRITICAL FAILURE | Cycle 283.0 | Risk: 0.056 | Ratio: 0.90 | RUL: 3.8
+2026-02-15 16:22:56,505 - JetGuard - CRITICAL - Kritik Hata! Cycle: 283.0

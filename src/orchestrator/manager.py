@@ -1,4 +1,3 @@
-import json
 import pandas as pd
 from pathlib import Path
 import sys
@@ -6,7 +5,6 @@ import sys
 ROOT_DIR = Path(__file__).resolve().parent.parent.parent
 sys.path.append(str(ROOT_DIR))
 
-from config.paths import SETTINGS_FILE
 from src.utils.logger import logger
 from src.stats_engine.guard import DataGuard, StatsGuard
 
