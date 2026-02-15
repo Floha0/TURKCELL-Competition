@@ -1,49 +1,34 @@
-"""
-Agentlar:
-
-    Sensor Analyst Agent: "Sensör 11 ve 12 artarken Sensör 7 düşmüş, bu kompresör arızasına işaret ediyor olabilir." yorumunu yapar.
-
-    Maintenance Planner Agent: "Bu motorun acil bakıma girmesi lazım, şu anki uçuş döngüsü tamamlanınca hangara çekin." aksiyonunu önerir.
-
-Kullanım: LangChain üzerinden bu ajanlar birbirine data paslar ve final raporu oluşturur.
-"""
 import sys
-
-"""
-Agentlar:
-
-    Sensor Analyst Agent: "Sensör 11 ve 12 artarken Sensör 7 düşmüş, bu kompresör arızasına işaret ediyor olabilir." yorumunu yapar.
-
-    Maintenance Planner Agent: "Bu motorun acil bakıma girmesi lazım, şu anki uçuş döngüsü tamamlanınca hangara çekin." aksiyonunu önerir.
-
-Kullanım: LangChain üzerinden bu ajanlar birbirine data paslar ve final raporu oluşturur.
-"""
+import os
+import yaml
 import dotenv
-
 from pathlib import Path
+
 ROOT_DIR = Path(__file__).resolve().parent.parent.parent
 sys.path.append(str(ROOT_DIR))
 
-dotenv.load_dotenv(ROOT_DIR / '.env.local')
+dotenv.load_dotenv(ROOT_DIR / '.env')
+groq_key = os.getenv("GROQ_API_KEY")
+
+if not groq_key or groq_key == "":
+    raise ValueError("🚨 GROQ_API_KEY bulunamadı! Lütfen .env dosyanızı kontrol edin.")
+
+os.environ["OPENAI_API_KEY"] = groq_key
+os.environ["OPENAI_BASE_URL"] = "https://api.groq.com/openai/v1"
+os.environ["OPENAI_API_BASE"] = "https://api.groq.com/openai/v1"
 
 from src.ai_core.tools import AnalysisTools
 from config.paths import CONFIG_DIR, AGENTS_FILE, TASKS_FILE
-import os
-import yaml
 from crewai import Agent, Task, Crew, Process
-
+from langchain_groq import ChatGroq
 
 class JetEngineCrew:
     def __init__(self):
-        # 1. API Anahtarı Kontrolü
-        api_key = os.getenv("GROQ_API_KEY")
-        if not api_key:
-            print("❌ WARNING: GROQ_API_KEY not found! Please export it in your terminal.")
-
-        # Model Tanımı (LiteLLM Formatı)
-        self.model_name = "groq/llama-3.3-70b-versatile"
-
-        # 2. Konfigürasyon Dosyalarını Yükle
+        # 2. GERÇEK MOTOR (Adres değiştirildiği için hatasız bağlanacak)
+        self.llm = ChatGroq(
+            api_key=groq_key,
+            model_name="llama-3.3-70b-versatile"
+        )
 
         self.configs_path = CONFIG_DIR
         self.agents_config = self._load_yaml(AGENTS_FILE)
@@ -57,15 +42,14 @@ class JetEngineCrew:
         """
         Orchestrates the AI crew to analyze the failure.
         """
-
-        # --- AGENTLER (YAML'dan gelen verilerle) ---
         sensor_analyst = Agent(
             role=self.agents_config['sensor_analyst']['role'],
             goal=self.agents_config['sensor_analyst']['goal'],
             backstory=self.agents_config['sensor_analyst']['backstory'],
             verbose=True,
             allow_delegation=False,
-            llm=self.model_name,
+            llm=self.llm,
+            function_calling_llm=self.llm,
             tools=[
                 AnalysisTools.calculate_roc,
                 AnalysisTools.fetch_sensor_limits
@@ -78,15 +62,13 @@ class JetEngineCrew:
             backstory=self.agents_config['maintenance_commander']['backstory'],
             verbose=True,
             allow_delegation=False,
-            llm=self.model_name,
-            tools = [
+            llm=self.llm,
+            function_calling_llm=self.llm,
+            tools=[
                 AnalysisTools.consult_manual,
             ]
         )
 
-        # --- GÖREVLER (YAML'dan gelen verilerle & Formatlayarak) ---
-
-        # YAML içindeki {variable} kısımlarını gerçek verilerle dolduruyoruz
         formatted_diagnosis_desc = self.tasks_config['diagnosis_task']['description'].format(
             loss_score=loss_score,
             sensor_data=sensor_data
@@ -104,13 +86,12 @@ class JetEngineCrew:
             agent=maintenance_commander
         )
 
-        # --- EKİBİ KUR ---
         crew = Crew(
             agents=[sensor_analyst, maintenance_commander],
             tasks=[diagnosis_task, action_plan_task],
             process=Process.sequential,
             verbose=True,
-            memory=False,  # OpenAI hatasını engeller
+            memory=False
         )
 
         return crew.kickoff()
