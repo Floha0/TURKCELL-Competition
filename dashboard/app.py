@@ -12,7 +12,6 @@ from datetime import datetime
 # --- ENV AYARLARI ---
 load_dotenv()
 os.environ["CREWAI_TELEMETRY_OPT_OUT"] = "true"
-os.environ["OPENAI_API_KEY"] = "NA"
 
 # --- PATH AYARLARI ---
 ROOT_DIR = Path(__file__).resolve().parent.parent
@@ -147,20 +146,20 @@ if start_btn:
         decision = orchestrator.diagnose(data_packet)
 
         current_cycle = data_packet['cycle']
-        loss = decision['loss']
+        spe = decision['spe']
         threshold = decision['threshold']
         priority = decision['priority']
         predicted_rul = decision.get('predicted_rul', 0)
 
         history_data['Cycle'].append(current_cycle)
-        history_data['Anomaly Score'].append(loss)
+        history_data['Anomaly Score'].append(spe)
         history_data['Threshold'].append(threshold)
 
         # RECALL DÜZELTME: Ground Truth eşiğini 130'dan 90'a çektik.
         # Artık 90'dan sonra gelen her uyarı "DOĞRU BİLİNMİŞ" sayılacak.
         simulated_ground_truth = 1 if current_cycle > 90 else 0
         predicted_class = 1 if priority >= 2 else 0
-        evaluator.add_record(simulated_ground_truth, predicted_class, probability=loss)
+        evaluator.add_record(simulated_ground_truth, predicted_class, probability=decision.get('risk_score', 0.0))
 
         # --- GÖRSEL GÜNCELLEME ---
 
@@ -172,7 +171,7 @@ if start_btn:
 
         # B. Anomaly Gauge
         loss_color = "#00FF00" if priority == 1 else "#FFA500" if priority == 2 else "#FF0000"
-        fig_loss = create_gauge(loss, "Anomaly Score", 0, threshold * 3, loss_color, threshold=threshold)
+        fig_loss = create_gauge(spe, "Anomaly Score", 0, threshold * 3, loss_color, threshold=threshold)
         # config parametresi eklendi
         loss_placeholder.plotly_chart(fig_loss, use_container_width=True, config=plotly_config)
 
@@ -197,7 +196,7 @@ if start_btn:
         chart_placeholder.altair_chart(chart, use_container_width=True)
 
         # E. Terminal
-        log_entry = f"> Cycle {current_cycle}: Loss {loss:.4f} | Status: {status_text}"
+        log_entry = f"> Cycle {current_cycle}: Loss {spe:.4f} | Status: {status_text}"
         terminal_logs.append(log_entry)
         if len(terminal_logs) > 12: terminal_logs.pop(0)
         terminal_html = "<div class='terminal-box'>" + "<br>".join(terminal_logs) + "</div>"
@@ -233,7 +232,7 @@ if start_btn:
                     try:
                         ai_crew = JetEngineCrew()
                         ai_input_data = f"SENSOR TELEMETRY: {str(data_packet)}\nPREDICTED RUL: {int(predicted_rul)} CYCLES"
-                        report = ai_crew.run_mission(ai_input_data, f"{loss:.4f}")
+                        report = ai_crew.run_mission(ai_input_data, f"{spe:.4f}")
 
                         # Raporu ve Metni Hafızaya Kaydet
                         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -244,7 +243,7 @@ if start_btn:
         DATE       : {timestamp}
         ENGINE ID  : {engine_id}
         FAIL CYCLE : {int(current_cycle)}
-        RISK SCORE : {loss:.6f}
+        RISK SCORE : {spe:.6f}
         EST. RUL   : {int(predicted_rul)} Cycles
         =======================================================
 
